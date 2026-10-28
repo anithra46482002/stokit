@@ -1,0 +1,1665 @@
+{
+  "php_files_scanned": 153,
+  "dynamic_table_name_candidates": [
+    {
+      "file": "admin/manage/allocated_users.php",
+      "line": 104,
+      "text": "$trans_note = \"Manual adjustment. \" . ($adjustment_note ?: \"Credit adjusted from $old_remaining to $remaining_credit\");"
+    },
+    {
+      "file": "admin/manage/editProduct.php",
+      "line": 139,
+      "text": "$stmt = $conn->prepare(\"INSERT INTO {$GLOBALS['qt']}_discount_banners (product_id, image_path) VALUES (?, ?)\");"
+    },
+    {
+      "file": "api/cart_api_test-2.php",
+      "line": 45,
+      "text": "$diag_res1 = $conn->query(\"SELECT product_id, product_name, has_disc, discount_percent FROM {$product_table} WHERE has_disc = 1\");"
+    },
+    {
+      "file": "api/cart_api_test-2.php",
+      "line": 54,
+      "text": "$diag_stmt2 = $conn->prepare(\"SELECT cart_id, product_id, variant_id, qty FROM {$cart_table} WHERE username = ?\");"
+    },
+    {
+      "file": "api/cart_api_test-2.php",
+      "line": 89,
+      "text": "(SELECT image_path FROM {$images_table}"
+    },
+    {
+      "file": "api/cart_api_test-2.php",
+      "line": 91,
+      "text": "FROM {$cart_table} c"
+    },
+    {
+      "file": "api/cart_api_test-2.php",
+      "line": 92,
+      "text": "LEFT JOIN {$product_table} p ON c.product_id = p.product_id"
+    },
+    {
+      "file": "api/cart_api_test-2.php",
+      "line": 93,
+      "text": "LEFT JOIN {$variant_table} v ON c.variant_id = v.variant_id"
+    },
+    {
+      "file": "api/cart_api_test-suj.php",
+      "line": 300,
+      "text": "FROM {$imagesTable}"
+    },
+    {
+      "file": "api/cart_api_test-suj.php",
+      "line": 303,
+      "text": "FROM {$cartTable} c"
+    },
+    {
+      "file": "api/cart_api_test-suj.php",
+      "line": 304,
+      "text": "LEFT JOIN {$productTable} p ON c.product_id = p.product_id"
+    },
+    {
+      "file": "api/cart_api_test-suj.php",
+      "line": 305,
+      "text": "LEFT JOIN {$variantTable} v ON c.variant_id = v.variant_id"
+    },
+    {
+      "file": "api/cart_api_test.-without-vip.php",
+      "line": 387,
+      "text": "FROM {$imagesTable}"
+    },
+    {
+      "file": "api/cart_api_test.-without-vip.php",
+      "line": 390,
+      "text": "FROM {$cartTable} c"
+    },
+    {
+      "file": "api/cart_api_test.-without-vip.php",
+      "line": 391,
+      "text": "LEFT JOIN {$productTable} p ON c.product_id = p.product_id"
+    },
+    {
+      "file": "api/cart_api_test.-without-vip.php",
+      "line": 392,
+      "text": "LEFT JOIN {$variantTable} v ON c.variant_id = v.variant_id"
+    },
+    {
+      "file": "api/cart_api_test.php",
+      "line": 417,
+      "text": "FROM {$imagesTable}"
+    },
+    {
+      "file": "api/cart_api_test.php",
+      "line": 420,
+      "text": "FROM {$cartTable} c"
+    },
+    {
+      "file": "api/cart_api_test.php",
+      "line": 421,
+      "text": "LEFT JOIN {$productTable} p ON c.product_id = p.product_id"
+    },
+    {
+      "file": "api/cart_api_test.php",
+      "line": 422,
+      "text": "LEFT JOIN {$variantTable} v ON c.variant_id = v.variant_id"
+    },
+    {
+      "file": "api/fav.php",
+      "line": 49,
+      "text": "$checkSql = \"SELECT id FROM {$favTable} WHERE user_id = ? AND product_id = ? LIMIT 1\";"
+    },
+    {
+      "file": "api/fav.php",
+      "line": 71,
+      "text": "$deleteSql = \"DELETE FROM {$favTable} WHERE user_id = ? AND product_id = ?\";"
+    },
+    {
+      "file": "api/fav.php",
+      "line": 101,
+      "text": "$insertSql = \"INSERT INTO {$favTable} (user_id, product_id, created_at) VALUES (?, ?, NOW())\";"
+    },
+    {
+      "file": "api/highlights.php",
+      "line": 46,
+      "text": "$countQuery = \"SELECT COUNT(*) as total FROM {$table_product} WHERE highlight = 1 AND `view` = 1\";"
+    },
+    {
+      "file": "api/highlights.php",
+      "line": 63,
+      "text": "FROM {$table_images}"
+    },
+    {
+      "file": "api/highlights.php",
+      "line": 68,
+      "text": "FROM {$table_product} p"
+    },
+    {
+      "file": "api/order_details-no-pricing.php",
+      "line": 276,
+      "text": "$stmt = $conn->prepare(\"SELECT status, changed_at FROM $statusTable WHERE order_id = ?\");"
+    },
+    {
+      "file": "api/order_details.php",
+      "line": 346,
+      "text": "$stmt = $conn->prepare(\"SELECT status, changed_at FROM $statusTable WHERE order_id = ?\");"
+    },
+    {
+      "file": "api/product-api.php",
+      "line": 98,
+      "text": "FROM {$favTable}"
+    },
+    {
+      "file": "api/recommended.php",
+      "line": 60,
+      "text": "$countQuery = \"SELECT COUNT(*) as total FROM {$table_product} WHERE highlight = 1 AND `view` = 1\";"
+    },
+    {
+      "file": "api/recommended.php",
+      "line": 77,
+      "text": "FROM {$table_images}"
+    },
+    {
+      "file": "api/recommended.php",
+      "line": 82,
+      "text": "FROM {$table_product} p"
+    },
+    {
+      "file": "api/search.php",
+      "line": 35,
+      "text": "FROM {$table_product} p"
+    },
+    {
+      "file": "api/search.php",
+      "line": 54,
+      "text": "FROM {$table_images}"
+    },
+    {
+      "file": "api/search.php",
+      "line": 58,
+      "text": "FROM {$table_product} p"
+    },
+    {
+      "file": "api/search.php",
+      "line": 59,
+      "text": "LEFT JOIN {$table_category} c ON c.category_id = p.category_id"
+    },
+    {
+      "file": "api/sub_categories.php",
+      "line": 42,
+      "text": "$catStmt = $conn->prepare(\"SELECT category_name FROM $category_table WHERE category_id = ?\");"
+    },
+    {
+      "file": "api/sub_categories.php",
+      "line": 55,
+      "text": "FROM $subcat_table"
+    }
+  ],
+  "tables": {
+    "users1": {
+      "php_hits": [],
+      "php_files": [],
+      "included_by": {},
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "username varchar(50) NOT NULL",
+          "email varchar(100) NOT NULL",
+          "fullname varchar(100) DEFAULT NULL",
+          "password varchar(255) NOT NULL",
+          "phone varchar(250) NOT NULL",
+          "address varchar(250) NOT NULL",
+          "paymentDate varchar(255) NOT NULL",
+          "token varchar(1000) NOT NULL",
+          "api_token varchar(64) DEFAULT NULL",
+          "last_login datetime DEFAULT NULL"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 2,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:62"
+        ],
+        "react": []
+      }
+    },
+    "zg_api_keys": {
+      "php_hits": [
+        {
+          "file": "admin/manage/keys.php",
+          "line": 18,
+          "function": "getAllKeys",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = $conn->query(\"SELECT * FROM {$qt}_api_keys ORDER BY key_type, service_name\");"
+        },
+        {
+          "file": "admin/manage/keys.php",
+          "line": 35,
+          "function": "getKeyById",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"SELECT * FROM {$qt}_api_keys WHERE id = ?\");"
+        },
+        {
+          "file": "admin/manage/keys.php",
+          "line": 84,
+          "function": "getGroupedKeys",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"UPDATE {$qt}_api_keys SET key_name = ?, key_value = ?, merchant_id = ?, salt_key = ?, payment_mode = ?, is_active = ?, description = ? W"
+        },
+        {
+          "file": "admin/manage/keys.php",
+          "line": 87,
+          "function": "getGroupedKeys",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"UPDATE {$qt}_api_keys SET key_name = ?, key_value = ?, is_active = ?, description = ? WHERE id = ?\");"
+        },
+        {
+          "file": "admin/manage/keys.php",
+          "line": 97,
+          "function": "getGroupedKeys",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"INSERT INTO {$qt}_api_keys (key_type, service_name, key_name, key_value, merchant_id, salt_key, payment_mode, is_active, description) VA"
+        },
+        {
+          "file": "admin/manage/keys.php",
+          "line": 100,
+          "function": "getGroupedKeys",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"INSERT INTO {$qt}_api_keys (key_type, service_name, key_name, key_value, is_active, description) VALUES (?, ?, ?, ?, ?, ?)\");"
+        },
+        {
+          "file": "admin/manage/keys.php",
+          "line": 120,
+          "function": "getGroupedKeys",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"DELETE FROM {$qt}_api_keys WHERE id = ?\");"
+        },
+        {
+          "file": "admin/manage/keys.php",
+          "line": 137,
+          "function": "getGroupedKeys",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"UPDATE {$qt}_api_keys SET is_active = ? WHERE id = ?\");"
+        }
+      ],
+      "php_files": [
+        "admin/manage/keys.php"
+      ],
+      "included_by": {
+        "keys.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "key_type enum('captcha','payment') NOT NULL DEFAULT 'captcha'",
+          "service_name varchar(50) DEFAULT NULL",
+          "key_name varchar(100) NOT NULL",
+          "key_value text NOT NULL",
+          "merchant_id varchar(100) DEFAULT NULL",
+          "salt_key varchar(255) DEFAULT NULL",
+          "payment_mode enum('test','live') DEFAULT 'test'",
+          "is_active tinyint(1) DEFAULT 1",
+          "description text DEFAULT NULL",
+          "created_at timestamp NULL DEFAULT current_timestamp()",
+          "updated_at timestamp NULL DEFAULT current_timestamp() ON UPDATE current"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 0,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:62"
+        ],
+        "react": []
+      }
+    },
+    "zg_banner": {
+      "php_hits": [
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 28,
+          "function": "hasActiveBanner",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = mysqli_query($conn, \"SELECT COUNT(*) as count FROM {$qt}_banner WHERE view = 'Y' $exclude\");"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 37,
+          "function": "getAvailableSlot",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = mysqli_query($conn, \"SELECT COUNT(*) as count FROM {$qt}_banner\");"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 48,
+          "function": "getAvailableSlot",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = mysqli_query($conn, \"SELECT banner_slot FROM {$qt}_banner\");"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 134,
+          "function": "getAvailableSlot",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$sql = \"UPDATE {$qt}_banner SET"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 147,
+          "function": "getAvailableSlot",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$old_image = mysqli_fetch_assoc(mysqli_query($conn, \"SELECT bg_image FROM {$qt}_banner WHERE id=$id\"));"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 168,
+          "function": "getAvailableSlot",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$sql = \"INSERT INTO {$qt}_banner (heading, paragraph, button_text, button_link, timer_days, timer_hours, timer_minutes, timer_seconds, bg_image, view, banner_sl"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 184,
+          "function": "getAvailableSlot",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = mysqli_query($conn, \"SELECT bg_image FROM {$qt}_banner WHERE id=$id\");"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 191,
+          "function": "getAvailableSlot",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "mysqli_query($conn, \"DELETE FROM {$qt}_banner WHERE id=$id\");"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 200,
+          "function": "getAvailableSlot",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = mysqli_query($conn, \"SELECT view FROM {$qt}_banner WHERE id=$id\");"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 208,
+          "function": "getAvailableSlot",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "mysqli_query($conn, \"UPDATE {$qt}_banner SET view = 'Y' WHERE id=$id\");"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 213,
+          "function": "getAvailableSlot",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "mysqli_query($conn, \"UPDATE {$qt}_banner SET view = 'N' WHERE id=$id\");"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 224,
+          "function": "getAvailableSlot",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$banners = mysqli_query($conn, \"SELECT * FROM {$qt}_banner ORDER BY banner_slot ASC\");"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 230,
+          "function": "getAvailableSlot",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = mysqli_query($conn, \"SELECT * FROM {$qt}_banner WHERE id=$id\");"
+        },
+        {
+          "file": "admin/manage/ban_timer.php",
+          "line": 432,
+          "function": "updatePreviewTimer",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$banners_reset = mysqli_query($conn, \"SELECT * FROM {$qt}_banner ORDER BY banner_slot ASC\");"
+        },
+        {
+          "file": "admin/manage/login.php",
+          "line": 105,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = mysqli_query($conn, \"SELECT * FROM {$qt}_banner WHERE view = 'Y' LIMIT 1\");"
+        }
+      ],
+      "php_files": [
+        "admin/manage/ban_timer.php",
+        "admin/manage/login.php"
+      ],
+      "included_by": {
+        "ban_timer.php": [],
+        "login.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "bg_image varchar(255) NOT NULL",
+          "timer_days int(11) NOT NULL DEFAULT 6",
+          "timer_hours int(11) NOT NULL DEFAULT 3",
+          "timer_minutes int(11) NOT NULL DEFAULT 5",
+          "timer_seconds int(11) NOT NULL DEFAULT 60",
+          "heading varchar(255) NOT NULL",
+          "paragraph text NOT NULL",
+          "button_text varchar(50) NOT NULL",
+          "button_link varchar(255) NOT NULL",
+          "last_updated timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE cur",
+          "view varchar(255) NOT NULL",
+          "count varchar(255) NOT NULL",
+          "banner_slot varchar(255) NOT NULL"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 1,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:62"
+        ],
+        "react": []
+      }
+    },
+    "zg_brands": {
+      "php_hits": [
+        {
+          "file": "admin/manage/brands.php",
+          "line": 49,
+          "function": "(top-level script)",
+          "kind": "INSERT",
+          "via_prefix_variable": false,
+          "text": "$sql = \"INSERT INTO zg_brands (image) VALUES ('$new_filename')\";"
+        },
+        {
+          "file": "admin/manage/brands.php",
+          "line": 66,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$sql = \"SELECT image FROM zg_brands WHERE id = $id\";"
+        },
+        {
+          "file": "admin/manage/brands.php",
+          "line": 75,
+          "function": "(top-level script)",
+          "kind": "DELETE",
+          "via_prefix_variable": false,
+          "text": "$sql = \"DELETE FROM zg_brands WHERE id = $id\";"
+        },
+        {
+          "file": "admin/manage/brands.php",
+          "line": 82,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$sql = \"SELECT * FROM zg_brands ORDER BY id DESC\";"
+        },
+        {
+          "file": "admin/manage/brands.php",
+          "line": 273,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$sql = \"SELECT * FROM zg_brands ORDER BY id DESC\";"
+        }
+      ],
+      "php_files": [
+        "admin/manage/brands.php"
+      ],
+      "included_by": {
+        "brands.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "image varchar(255) NOT NULL"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 3,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:62"
+        ],
+        "react": []
+      }
+    },
+    "zg_cod": {
+      "php_hits": [
+        {
+          "file": "admin/manage/cod.php",
+          "line": 24,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$sql = \"SELECT cod_enabled FROM zg_cod LIMIT 1\";"
+        },
+        {
+          "file": "admin/manage/cod.php",
+          "line": 39,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$sql = \"SELECT * FROM zg_cod LIMIT 1\";"
+        },
+        {
+          "file": "admin/manage/cod.php",
+          "line": 100,
+          "function": "(top-level script)",
+          "kind": "UPDATE",
+          "via_prefix_variable": false,
+          "text": "$sql = \"UPDATE zg_cod SET"
+        },
+        {
+          "file": "admin/manage/cod.php",
+          "line": 110,
+          "function": "(top-level script)",
+          "kind": "INSERT",
+          "via_prefix_variable": false,
+          "text": "$sql = \"INSERT INTO zg_cod ("
+        }
+      ],
+      "php_files": [
+        "admin/manage/cod.php"
+      ],
+      "included_by": {
+        "cod.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "cod_enabled enum('Y','N') NOT NULL DEFAULT 'N'",
+          "charges decimal(10,2) NOT NULL DEFAULT 0.00",
+          "created_at timestamp NOT NULL DEFAULT current_timestamp()",
+          "shipping_type enum('fixed','price_based') DEFAULT 'fixed'",
+          "fixed_shipping_charge decimal(10,2) DEFAULT 0.00",
+          "min_order_amount decimal(10,2) DEFAULT 0.00",
+          "shipping_charge_below_min decimal(10,2) DEFAULT 0.00"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 1,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:62"
+        ],
+        "react": []
+      }
+    },
+    "zg_headings": {
+      "php_hits": [
+        {
+          "file": "admin/manage/heading4.php",
+          "line": 18,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"SELECT heading1, heading2, heading3, heading4, heading5, heading6 FROM {$qt}_headings WHERE id = 1\");"
+        },
+        {
+          "file": "admin/manage/heading4.php",
+          "line": 46,
+          "function": "(top-level script)",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"UPDATE {$qt}_headings SET heading1 = ?, heading2 = ?, heading3 = ?, heading4 = ?, heading5 = ?, heading6 = ? WHERE id = 1\");"
+        }
+      ],
+      "php_files": [
+        "admin/manage/heading4.php"
+      ],
+      "included_by": {
+        "heading4.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "heading1 varchar(255) DEFAULT NULL",
+          "heading2 varchar(255) DEFAULT NULL",
+          "heading3 varchar(255) DEFAULT NULL",
+          "heading4 varchar(255) DEFAULT NULL",
+          "heading5 varchar(255) DEFAULT NULL",
+          "heading6 varchar(255) DEFAULT NULL",
+          "heading7 varchar(225) NOT NULL"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 1,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:62"
+        ],
+        "react": []
+      }
+    },
+    "zg_headings_new": {
+      "php_hits": [
+        {
+          "file": "admin/manage/editProduct.php",
+          "line": 14,
+          "function": "(top-level script)",
+          "kind": "comment-only",
+          "via_prefix_variable": false,
+          "text": "// Fetch headings from zg_headings_new"
+        },
+        {
+          "file": "admin/manage/editProduct.php",
+          "line": 15,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$query = \"SELECT id, name FROM zg_headings_new ORDER BY id ASC\";"
+        },
+        {
+          "file": "admin/manage/headings.php",
+          "line": 30,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"SELECT image FROM {$qt}_headings_new WHERE id = ?\");"
+        },
+        {
+          "file": "admin/manage/headings.php",
+          "line": 43,
+          "function": "(top-level script)",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$deleteStmt = $conn->prepare(\"UPDATE {$qt}_headings_new SET name = '', button_name = '', image = '' WHERE id = ?\");"
+        },
+        {
+          "file": "admin/manage/headings.php",
+          "line": 61,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"SELECT image FROM {$qt}_headings_new WHERE id = ?\");"
+        },
+        {
+          "file": "admin/manage/headings.php",
+          "line": 74,
+          "function": "(top-level script)",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$updateStmt = $conn->prepare(\"UPDATE {$qt}_headings_new SET image = '' WHERE id = ?\");"
+        },
+        {
+          "file": "admin/manage/headings.php",
+          "line": 88,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"SELECT id, name, button_name, image FROM {$qt}_headings_new WHERE id BETWEEN 1 AND 7 ORDER BY id\");"
+        },
+        {
+          "file": "admin/manage/headings.php",
+          "line": 146,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"SELECT id FROM {$qt}_headings_new WHERE id = ?\");"
+        },
+        {
+          "file": "admin/manage/headings.php",
+          "line": 153,
+          "function": "(top-level script)",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$updateStmt = $conn->prepare(\"UPDATE {$qt}_headings_new SET name = ?, button_name = ?, image = ? WHERE id = ?\");"
+        },
+        {
+          "file": "admin/manage/headings.php",
+          "line": 164,
+          "function": "(top-level script)",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$insertStmt = $conn->prepare(\"INSERT INTO {$qt}_headings_new (id, name, button_name, image) VALUES (?, ?, ?, ?)\");"
+        },
+        {
+          "file": "admin/manage/product.php",
+          "line": 11,
+          "function": "(top-level script)",
+          "kind": "comment-only",
+          "via_prefix_variable": false,
+          "text": "// Fetch headings from zg_headings_new"
+        },
+        {
+          "file": "admin/manage/product.php",
+          "line": 12,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$query = \"SELECT id, name FROM zg_headings_new ORDER BY id ASC\";"
+        }
+      ],
+      "php_files": [
+        "admin/manage/editProduct.php",
+        "admin/manage/headings.php",
+        "admin/manage/product.php"
+      ],
+      "included_by": {
+        "editProduct.php": [],
+        "headings.php": [],
+        "product.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "name varchar(255) DEFAULT NULL",
+          "button_name varchar(125) NOT NULL",
+          "image varchar(500) DEFAULT NULL",
+          "updated_at timestamp NULL DEFAULT current_timestamp() ON UPDATE current"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 7,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:62"
+        ],
+        "react": []
+      }
+    },
+    "zg_logo": {
+      "php_hits": [
+        {
+          "file": "admin/manage/logo.php",
+          "line": 44,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$query = \"SELECT file, type FROM {$qt}_logo WHERE id = ?\";"
+        },
+        {
+          "file": "admin/manage/logo.php",
+          "line": 59,
+          "function": "(top-level script)",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$query = \"DELETE FROM {$qt}_logo WHERE id = ?\";"
+        },
+        {
+          "file": "admin/manage/logo.php",
+          "line": 81,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$query = \"SELECT file, type FROM {$qt}_logo WHERE id = ? AND type = 'favicon'\";"
+        },
+        {
+          "file": "admin/manage/logo.php",
+          "line": 96,
+          "function": "(top-level script)",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$query = \"DELETE FROM {$qt}_logo WHERE id = ? AND type = 'favicon'\";"
+        },
+        {
+          "file": "admin/manage/logo.php",
+          "line": 138,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$query = \"SELECT id, file FROM {$qt}_logo WHERE type = ? LIMIT 1\";"
+        },
+        {
+          "file": "admin/manage/logo.php",
+          "line": 174,
+          "function": "(top-level script)",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$query = \"UPDATE {$qt}_logo SET file = ?, updated_at = NOW() WHERE id = ?\";"
+        },
+        {
+          "file": "admin/manage/logo.php",
+          "line": 178,
+          "function": "(top-level script)",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$query = \"INSERT INTO {$qt}_logo (file, type, created_at) VALUES (?, ?, NOW())\";"
+        },
+        {
+          "file": "admin/manage/logo.php",
+          "line": 206,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$query = \"SELECT id, file, type, created_at, updated_at FROM {$qt}_logo WHERE type = 'logo' LIMIT 1\";"
+        },
+        {
+          "file": "admin/manage/logo.php",
+          "line": 212,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$query = \"SELECT id, file, type, created_at, updated_at FROM {$qt}_logo WHERE type = 'favicon' LIMIT 1\";"
+        }
+      ],
+      "php_files": [
+        "admin/manage/logo.php"
+      ],
+      "included_by": {
+        "logo.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "file varchar(255) NOT NULL",
+          "type enum('logo','favicon') NOT NULL DEFAULT 'logo'",
+          "favico varchar(255) NOT NULL",
+          "created_at timestamp NULL DEFAULT current_timestamp()",
+          "updated_at timestamp NULL DEFAULT current_timestamp() ON UPDATE current"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 2,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:62"
+        ],
+        "react": []
+      }
+    },
+    "zg_product_warehouse": {
+      "php_hits": [
+        {
+          "file": "admin/manage/editProduct.php",
+          "line": 80,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = $conn->query(\"SELECT warehouse_id FROM {$qt}_product_warehouse WHERE product_id = $product_id\");"
+        },
+        {
+          "file": "admin/manage/editProduct.php",
+          "line": 258,
+          "function": "handleBannerUpload",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"DELETE FROM {$qt}_product_warehouse WHERE product_id = $product_id\");"
+        },
+        {
+          "file": "admin/manage/editProduct.php",
+          "line": 261,
+          "function": "handleBannerUpload",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$insertStmt = $conn->prepare(\"INSERT INTO {$qt}_product_warehouse (product_id, warehouse_id) VALUES (?, ?)\");"
+        },
+        {
+          "file": "admin/manage/product.php",
+          "line": 60,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$query .= \" INNER JOIN {$qt}_product_warehouse pw ON p.product_id = pw.product_id \";"
+        },
+        {
+          "file": "admin/manage/product.php",
+          "line": 144,
+          "function": "(top-level script)",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"DELETE FROM {$qt}_product_warehouse WHERE product_id = $product_id\");"
+        },
+        {
+          "file": "admin/manage/warehouse_details.php",
+          "line": 161,
+          "function": "(top-level script)",
+          "kind": "comment-only",
+          "via_prefix_variable": true,
+          "text": "// Products are assigned to warehouses through {$qt}_product_warehouse"
+        },
+        {
+          "file": "admin/manage/warehouse_details.php",
+          "line": 165,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "FROM {$qt}_product_warehouse"
+        },
+        {
+          "file": "admin/manage/warehouse_details.php",
+          "line": 224,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "FROM {$qt}_product_warehouse pw"
+        }
+      ],
+      "php_files": [
+        "admin/manage/editProduct.php",
+        "admin/manage/product.php",
+        "admin/manage/warehouse_details.php"
+      ],
+      "included_by": {
+        "editProduct.php": [],
+        "product.php": [],
+        "warehouse_details.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "product_id int(11) NOT NULL",
+          "warehouse_id int(11) NOT NULL"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [
+          "`product_id` -> zg_product",
+          "`warehouse_id` -> zg_warehouse"
+        ],
+        "triggers_mentioning": [],
+        "approx_rows": 9,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:63",
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:68"
+        ],
+        "react": []
+      }
+    },
+    "zg_reels": {
+      "php_hits": [
+        {
+          "file": "admin/manage/reels.php",
+          "line": 51,
+          "function": "getInstagramEmbedCode",
+          "kind": "UPDATE",
+          "via_prefix_variable": false,
+          "text": "$sql = \"UPDATE `zg_reels` SET url='$clean_url' WHERE id=$id\";"
+        },
+        {
+          "file": "admin/manage/reels.php",
+          "line": 59,
+          "function": "getInstagramEmbedCode",
+          "kind": "INSERT",
+          "via_prefix_variable": false,
+          "text": "$sql = \"INSERT INTO `zg_reels` (url) VALUES ('$clean_url')\";"
+        },
+        {
+          "file": "admin/manage/reels.php",
+          "line": 72,
+          "function": "getInstagramEmbedCode",
+          "kind": "DELETE",
+          "via_prefix_variable": false,
+          "text": "$sql = \"DELETE FROM `zg_reels` WHERE id = $id\";"
+        },
+        {
+          "file": "admin/manage/reels.php",
+          "line": 84,
+          "function": "getInstagramEmbedCode",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$result = mysqli_query($conn, \"SELECT * FROM `zg_reels` WHERE id = $id\");"
+        },
+        {
+          "file": "admin/manage/reels.php",
+          "line": 90,
+          "function": "getInstagramEmbedCode",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$result = $conn->query(\"SELECT * FROM `zg_reels` ORDER BY id DESC\");"
+        }
+      ],
+      "php_files": [
+        "admin/manage/reels.php"
+      ],
+      "included_by": {
+        "reels.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "url varchar(500) NOT NULL",
+          "embed_code text DEFAULT NULL",
+          "thumbnail_url varchar(500) DEFAULT NULL",
+          "created_at timestamp NOT NULL DEFAULT current_timestamp()"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 1,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:62"
+        ],
+        "react": []
+      }
+    },
+    "zg_social_media": {
+      "php_hits": [
+        {
+          "file": "admin/manage/navbar.php",
+          "line": 3,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$query = \"SELECT * FROM zg_social_media LIMIT 1\";"
+        },
+        {
+          "file": "admin/manage/social.php",
+          "line": 18,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"SELECT facebook, instagram, youtube, linkedin FROM {$qt}_social_media WHERE id = 1\");"
+        },
+        {
+          "file": "admin/manage/social.php",
+          "line": 41,
+          "function": "(top-level script)",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"UPDATE {$qt}_social_media SET facebook = ?, instagram = ?, youtube = ?, linkedin = ? WHERE id = 1\");"
+        }
+      ],
+      "php_files": [
+        "admin/manage/navbar.php",
+        "admin/manage/social.php"
+      ],
+      "included_by": {
+        "navbar.php": [
+          "admin/manage/O.PHP",
+          "admin/manage/addCustomer.php",
+          "admin/manage/addProduct.php",
+          "admin/manage/add_col.php",
+          "admin/manage/add_offer.php",
+          "admin/manage/allocate_offer.php",
+          "admin/manage/allocated_users.php",
+          "admin/manage/allocated_users_back.php",
+          "admin/manage/ban_timer.php",
+          "admin/manage/barcodefen.php",
+          "admin/manage/bill.php",
+          "admin/manage/brands.php",
+          "admin/manage/cod.php",
+          "admin/manage/col.php",
+          "admin/manage/colours.php",
+          "admin/manage/customer_orders.php",
+          "admin/manage/editCustomer.php",
+          "admin/manage/editProduct.php",
+          "admin/manage/editProduct_old_without_var.php",
+          "admin/manage/edit_allocation.php",
+          "admin/manage/edit_col.php",
+          "admin/manage/edit_col_.php",
+          "admin/manage/edit_offer.php",
+          "admin/manage/heading4.php",
+          "admin/manage/headings.php",
+          "admin/manage/info.php",
+          "admin/manage/inventory.php",
+          "admin/manage/keys.php",
+          "admin/manage/logo.php",
+          "admin/manage/order-before-colour-warehouse-filter.php",
+          "admin/manage/order.php",
+          "admin/manage/order_details.php",
+          "admin/manage/pass.php",
+          "admin/manage/reels.php",
+          "admin/manage/setting.php",
+          "admin/manage/social.php",
+          "admin/manage/targets.php",
+          "admin/manage/testmo.php",
+          "admin/manage/use_credit.php",
+          "admin/manage/view_allocation.php",
+          "admin/manage/x-About.php",
+          "admin/manage/x-Refund.php",
+          "admin/manage/x-Shiping.php",
+          "admin/manage/x-Terms.php",
+          "admin/manage/x-privacy.php",
+          "admin/manage/xConedit.php"
+        ],
+        "social.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "facebook varchar(255) DEFAULT NULL",
+          "instagram varchar(255) DEFAULT NULL",
+          "youtube varchar(255) DEFAULT NULL",
+          "linkedin varchar(255) DEFAULT NULL"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 1,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:63"
+        ],
+        "react": []
+      }
+    },
+    "zg_target_activity_log": {
+      "php_hits": [],
+      "php_files": [],
+      "included_by": {},
+      "dump": {
+        "columns": [
+          "log_id int(11) NOT NULL",
+          "target_id int(11) NOT NULL",
+          "user_id int(11) DEFAULT NULL",
+          "action enum('CREATED','UPDATED','DELETED','ASSIGNED','UNASSIGNED','",
+          "details text DEFAULT NULL",
+          "ip_address varchar(45) DEFAULT NULL",
+          "created_at timestamp NOT NULL DEFAULT current_timestamp()"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 0,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:63"
+        ],
+        "react": []
+      }
+    },
+    "zg_testy": {
+      "php_hits": [
+        {
+          "file": "admin/manage/testmo.php",
+          "line": 59,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$old_image = mysqli_fetch_assoc(mysqli_query($conn, \"SELECT image FROM  zg_testy WHERE id = $id\"));"
+        },
+        {
+          "file": "admin/manage/testmo.php",
+          "line": 68,
+          "function": "(top-level script)",
+          "kind": "UPDATE",
+          "via_prefix_variable": false,
+          "text": "$sql = \"UPDATE  zg_testy SET image='$new_filename', text1='$text1', text2='$text2', text3='$text3' WHERE id=$id\";"
+        },
+        {
+          "file": "admin/manage/testmo.php",
+          "line": 71,
+          "function": "(top-level script)",
+          "kind": "INSERT",
+          "via_prefix_variable": false,
+          "text": "$sql = \"INSERT INTO  zg_testy (image, text1, text2, text3) VALUES ('$new_filename', '$text1', '$text2', '$text3')\";"
+        },
+        {
+          "file": "admin/manage/testmo.php",
+          "line": 87,
+          "function": "(top-level script)",
+          "kind": "UPDATE",
+          "via_prefix_variable": false,
+          "text": "$sql = \"UPDATE  zg_testy SET text1='$text1', text2='$text2', text3='$text3' WHERE id=$id\";"
+        },
+        {
+          "file": "admin/manage/testmo.php",
+          "line": 90,
+          "function": "(top-level script)",
+          "kind": "INSERT",
+          "via_prefix_variable": false,
+          "text": "$sql = \"INSERT INTO  zg_testy (text1, text2, text3) VALUES ('$text1', '$text2', '$text3')\";"
+        },
+        {
+          "file": "admin/manage/testmo.php",
+          "line": 104,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$sql = \"SELECT image FROM  zg_testy WHERE id = $id\";"
+        },
+        {
+          "file": "admin/manage/testmo.php",
+          "line": 112,
+          "function": "(top-level script)",
+          "kind": "DELETE",
+          "via_prefix_variable": false,
+          "text": "$sql = \"DELETE FROM  zg_testy WHERE id = $id\";"
+        },
+        {
+          "file": "admin/manage/testmo.php",
+          "line": 122,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$result = mysqli_query($conn, \"SELECT * FROM  zg_testy WHERE id = $id\");"
+        },
+        {
+          "file": "admin/manage/testmo.php",
+          "line": 127,
+          "function": "(top-level script)",
+          "kind": "comment-only",
+          "via_prefix_variable": false,
+          "text": "//$result = mysqli_query($conn, \"SELECT * FROM  zg_testy ORDER BY id DESC\");"
+        },
+        {
+          "file": "admin/manage/testmo.php",
+          "line": 133,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = $conn->query(\"SELECT * FROM {$qt}_testy ORDER BY id DESC\");"
+        }
+      ],
+      "php_files": [
+        "admin/manage/testmo.php"
+      ],
+      "included_by": {
+        "testmo.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "image varchar(255) DEFAULT NULL",
+          "text1 varchar(255) DEFAULT NULL",
+          "text2 varchar(255) DEFAULT NULL",
+          "text3 text DEFAULT NULL"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 4,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:63"
+        ],
+        "react": []
+      }
+    },
+    "zg_vari_product": {
+      "php_hits": [
+        {
+          "file": "admin/manage/add_col.php",
+          "line": 89,
+          "function": "compressImage",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"INSERT INTO {$qt}_vari_product (ver_name,product_name, product_price, product_discount, product_description, product_keywords, product_i"
+        },
+        {
+          "file": "admin/manage/col.php",
+          "line": 44,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"SELECT * FROM {$qt}_vari_product WHERE product_id = ?\");"
+        },
+        {
+          "file": "admin/manage/col.php",
+          "line": 331,
+          "function": "(top-level script)",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"DELETE FROM {$qt}_vari_product WHERE id = $pro_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 22,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = $conn->query(\"SELECT * FROM {$qt}_vari_product WHERE id = $product_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 77,
+          "function": "compressImage",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"UPDATE {$qt}_vari_product SET product_name = ?, product_price = ?, product_discount = ?, product_description = ?, product_id = ? WHERE i"
+        },
+        {
+          "file": "admin/manage/edit_col_.php",
+          "line": 22,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = $conn->query(\"SELECT * FROM {$qt}_vari_product WHERE id = $product_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col_.php",
+          "line": 70,
+          "function": "compressImage",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"UPDATE {$qt}_vari_product SET product_name = ?, product_price = ?, product_discount = ?, product_description = ?, product_id = ? WHERE i"
+        }
+      ],
+      "php_files": [
+        "admin/manage/add_col.php",
+        "admin/manage/col.php",
+        "admin/manage/edit_col.php",
+        "admin/manage/edit_col_.php"
+      ],
+      "included_by": {
+        "add_col.php": [],
+        "col.php": [],
+        "edit_col.php": [],
+        "edit_col_.php": []
+      },
+      "dump": {
+        "columns": [
+          "id int(11) NOT NULL",
+          "var_id int(11) NOT NULL",
+          "ver_name varchar(255) NOT NULL",
+          "product_name varchar(255) NOT NULL",
+          "product_price decimal(10,2) NOT NULL",
+          "product_discount decimal(5,2) DEFAULT NULL",
+          "product_description text DEFAULT NULL",
+          "product_keywords varchar(255) NOT NULL",
+          "product_id int(11) DEFAULT NULL",
+          "top int(11) DEFAULT 0",
+          "hand int(11) DEFAULT 0",
+          "added varchar(255) NOT NULL"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 0,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:63"
+        ],
+        "react": []
+      }
+    },
+    "zg_vari_product_images": {
+      "php_hits": [
+        {
+          "file": "admin/manage/add_col.php",
+          "line": 108,
+          "function": "compressImage",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"INSERT INTO {$qt}_vari_product_images (var_id,product_id, image_path) VALUES (?,?, ?)\");"
+        },
+        {
+          "file": "admin/manage/col.php",
+          "line": 270,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$sql = \"SELECT image_path FROM {$qt}_vari_product_images WHERE var_id = ?\";"
+        },
+        {
+          "file": "admin/manage/col.php",
+          "line": 319,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": false,
+          "text": "$result = $conn->query(\"SELECT image_path FROM zg_vari_product_images WHERE id = $pro_id\");"
+        },
+        {
+          "file": "admin/manage/col.php",
+          "line": 329,
+          "function": "(top-level script)",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"DELETE FROM {$qt}_vari_product_images WHERE id = $pro_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 27,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = $conn->query(\"SELECT * FROM {$qt}_vari_product_images WHERE var_id = $product_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 97,
+          "function": "compressImage",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"INSERT INTO {$qt}_vari_product_images (product_id, var_id, image_path, main) VALUES (?, ?, ?, 0)\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 108,
+          "function": "compressImage",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = $conn->query(\"SELECT image_path FROM {$qt}_vari_product_images WHERE image_id = $image_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 115,
+          "function": "compressImage",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"DELETE FROM {$qt}_vari_product_images WHERE image_id = $image_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 121,
+          "function": "compressImage",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"UPDATE {$qt}_vari_product_images SET main = 0 WHERE product_id = $product_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 122,
+          "function": "compressImage",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"UPDATE {$qt}_vari_product_images SET main = 1 WHERE image_id = $main_image_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col_.php",
+          "line": 27,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = $conn->query(\"SELECT * FROM {$qt}_vari_product_images WHERE var_id = $product_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col_.php",
+          "line": 90,
+          "function": "compressImage",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"INSERT INTO {$qt}_vari_product_images (product_id, var_id, image_path, main) VALUES (?, ?, ?, 0)\");"
+        },
+        {
+          "file": "admin/manage/edit_col_.php",
+          "line": 101,
+          "function": "compressImage",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = $conn->query(\"SELECT image_path FROM {$qt}_vari_product_images WHERE image_id = $image_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col_.php",
+          "line": 108,
+          "function": "compressImage",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"DELETE FROM {$qt}_vari_product_images WHERE image_id = $image_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col_.php",
+          "line": 114,
+          "function": "compressImage",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"UPDATE {$qt}_vari_product_images SET main = 0 WHERE product_id = $product_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col_.php",
+          "line": 115,
+          "function": "compressImage",
+          "kind": "UPDATE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"UPDATE {$qt}_vari_product_images SET main = 1 WHERE image_id = $main_image_id\");"
+        }
+      ],
+      "php_files": [
+        "admin/manage/add_col.php",
+        "admin/manage/col.php",
+        "admin/manage/edit_col.php",
+        "admin/manage/edit_col_.php"
+      ],
+      "included_by": {
+        "add_col.php": [],
+        "col.php": [],
+        "edit_col.php": [],
+        "edit_col_.php": []
+      },
+      "dump": {
+        "columns": [
+          "image_id int(11) NOT NULL",
+          "product_id int(11) DEFAULT NULL",
+          "var_id varchar(255) NOT NULL",
+          "image_path varchar(255) NOT NULL",
+          "main varchar(255) NOT NULL"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 0,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:63"
+        ],
+        "react": []
+      }
+    },
+    "zg_vari_variant": {
+      "php_hits": [
+        {
+          "file": "admin/manage/col.php",
+          "line": 330,
+          "function": "(top-level script)",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"DELETE FROM {$qt}_vari_variant WHERE id = $pro_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 34,
+          "function": "(top-level script)",
+          "kind": "SELECT/read",
+          "via_prefix_variable": true,
+          "text": "$result = $conn->query(\"SELECT * FROM {$qt}_vari_variant WHERE product_id = $product_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 126,
+          "function": "compressImage",
+          "kind": "comment-only",
+          "via_prefix_variable": false,
+          "text": "// Handle variants - first delete all existing variants zg_vari_variant"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 127,
+          "function": "compressImage",
+          "kind": "DELETE",
+          "via_prefix_variable": true,
+          "text": "$conn->query(\"DELETE FROM {$qt}_vari_variant WHERE product_id = $ver_id\");"
+        },
+        {
+          "file": "admin/manage/edit_col.php",
+          "line": 137,
+          "function": "compressImage",
+          "kind": "INSERT",
+          "via_prefix_variable": true,
+          "text": "$stmt = $conn->prepare(\"INSERT INTO {$qt}_vari_variant (variant_name, variant_price, product_id, disc) VALUES (?, ?, ?, ?)\");"
+        }
+      ],
+      "php_files": [
+        "admin/manage/col.php",
+        "admin/manage/edit_col.php"
+      ],
+      "included_by": {
+        "col.php": [],
+        "edit_col.php": []
+      },
+      "dump": {
+        "columns": [
+          "variant_id int(11) NOT NULL",
+          "variant_name varchar(255) NOT NULL",
+          "variant_price decimal(10,2) NOT NULL",
+          "product_id int(11) DEFAULT NULL",
+          "disc varchar(255) NOT NULL"
+        ],
+        "inbound_fk": [],
+        "outbound_fk": [],
+        "triggers_mentioning": [],
+        "approx_rows": 0,
+        "create_found": true
+      },
+      "repo": {
+        "django_runtime": [],
+        "django_tests_migrations_tools": [
+          "django_backend/scripts/read_only_audits/phase_a_manifest_readonly.py:63"
+        ],
+        "react": []
+      }
+    }
+  }
+}

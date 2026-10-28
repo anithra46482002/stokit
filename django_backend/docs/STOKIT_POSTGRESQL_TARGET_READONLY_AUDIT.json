@@ -1,0 +1,347 @@
+{
+  "generated_at": "2026-10-15T20:40:43+05:30",
+  "mode": "read-only PostgreSQL metadata and row-count audit",
+  "database": "stokit_postgres_dev",
+  "role": "postgres",
+  "schema": "public",
+  "server_address": "127.0.0.1/32",
+  "server_port": 5432,
+  "server_version": "PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+  "tables": [
+    {
+      "table": "admin_cart_discount_settings",
+      "row_count": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "smallint",
+          "nullable": false,
+          "default": null,
+          "max_length": null,
+          "numeric_precision": 16,
+          "numeric_scale": 0
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "nullable": false,
+          "default": null,
+          "max_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "minimum_subtotal",
+          "type": "numeric",
+          "nullable": false,
+          "default": null,
+          "max_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2
+        },
+        {
+          "name": "fixed_discount_amount",
+          "type": "numeric",
+          "nullable": false,
+          "default": null,
+          "max_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": null,
+          "max_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "admin_cart_discount_settings_enabled_not_null",
+          "type": "n",
+          "definition": "NOT NULL enabled"
+        },
+        {
+          "name": "admin_cart_discount_settings_fixed_discount_amount_not_null",
+          "type": "n",
+          "definition": "NOT NULL fixed_discount_amount"
+        },
+        {
+          "name": "admin_cart_discount_settings_id_check",
+          "type": "c",
+          "definition": "CHECK ((id >= 0))"
+        },
+        {
+          "name": "admin_cart_discount_settings_id_not_null",
+          "type": "n",
+          "definition": "NOT NULL id"
+        },
+        {
+          "name": "admin_cart_discount_settings_minimum_subtotal_not_null",
+          "type": "n",
+          "definition": "NOT NULL minimum_subtotal"
+        },
+        {
+          "name": "admin_cart_discount_settings_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "admin_cart_discount_settings_updated_at_not_null",
+          "type": "n",
+          "definition": "NOT NULL updated_at"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "admin_cart_discount_settings_pkey",
+          "definition": "CREATE UNIQUE INDEX admin_cart_discount_settings_pkey ON public.admin_cart_discount_settings USING btree (id)"
+        }
+      ]
+    },
+    {
+      "table": "admins",
+      "row_count": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "max_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0
+        },
+        {
+          "name": "username",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "max_length": 50,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "email",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "max_length": 100,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "fullname",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "max_length": 100,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "password",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "max_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "phone",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "max_length": 250,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "address",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "max_length": 250,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "paymentDate",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "max_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "token",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "max_length": 1000,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "api_token",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "max_length": 64,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "last_login",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "max_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "admins_address_not_null",
+          "type": "n",
+          "definition": "NOT NULL address"
+        },
+        {
+          "name": "admins_email_not_null",
+          "type": "n",
+          "definition": "NOT NULL email"
+        },
+        {
+          "name": "admins_id_not_null",
+          "type": "n",
+          "definition": "NOT NULL id"
+        },
+        {
+          "name": "admins_password_not_null",
+          "type": "n",
+          "definition": "NOT NULL password"
+        },
+        {
+          "name": "admins_paymentDate_not_null",
+          "type": "n",
+          "definition": "NOT NULL \"paymentDate\""
+        },
+        {
+          "name": "admins_phone_not_null",
+          "type": "n",
+          "definition": "NOT NULL phone"
+        },
+        {
+          "name": "admins_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "admins_token_not_null",
+          "type": "n",
+          "definition": "NOT NULL token"
+        },
+        {
+          "name": "admins_username_not_null",
+          "type": "n",
+          "definition": "NOT NULL username"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "admins_pkey",
+          "definition": "CREATE UNIQUE INDEX admins_pkey ON public.admins USING btree (id)"
+        }
+      ]
+    },
+    {
+      "table": "django_migrations",
+      "row_count": 1,
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "max_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0
+        },
+        {
+          "name": "app",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "max_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "max_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "name": "applied",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": null,
+          "max_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "django_migrations_app_not_null",
+          "type": "n",
+          "definition": "NOT NULL app"
+        },
+        {
+          "name": "django_migrations_applied_not_null",
+          "type": "n",
+          "definition": "NOT NULL applied"
+        },
+        {
+          "name": "django_migrations_id_not_null",
+          "type": "n",
+          "definition": "NOT NULL id"
+        },
+        {
+          "name": "django_migrations_name_not_null",
+          "type": "n",
+          "definition": "NOT NULL name"
+        },
+        {
+          "name": "django_migrations_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "django_migrations_pkey",
+          "definition": "CREATE UNIQUE INDEX django_migrations_pkey ON public.django_migrations USING btree (id)"
+        }
+      ]
+    }
+  ],
+  "migration_records": [
+    {
+      "app": "adminapi",
+      "name": "0001_cart_discount_settings",
+      "applied": "2026-10-15T10:14:38.022359"
+    }
+  ],
+  "safety": "No DDL, DML, migrations, account creation, or data import was performed."
+}

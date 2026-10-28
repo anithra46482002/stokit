@@ -1,0 +1,231 @@
+openapi: 3.0.3
+info:
+  title: StokIt React Admin API
+  version: 1.0.0
+  description: >-
+    Source-derived specification for the Django React-admin API. Read operations and
+    write operations are documented separately. Response schemas remain generic where
+    exact field contracts have not yet been verified. Do not run mutating operations
+    against shared or production data.
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local Django development server
+  - url: https://book-fiscally-reunion.ngrok-free.dev
+    description: Current ngrok tunnel; availability depends on the local tunnel process
+components:
+  securitySchemes:
+    AdminBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: Signed Django admin token
+  schemas:
+    GenericObject:
+      type: object
+      additionalProperties: true
+      description: Placeholder only where the complete response schema has not been source-verified.
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+security:
+  - AdminBearer: []
+paths:
+  /admin-api/auth/login:
+    post:
+      operationId: adminLogin
+      summary: Authenticate an admin, salesperson, or delivery user
+      description: Source verified. No auth required. Requires username and password; never use real credentials in examples.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: {type: string}
+                password: {type: string, format: password}
+      responses:
+        '200': {description: Success returns success, signed token, and user identity/role, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}
+        '400': {description: Missing username or password}
+        '401': {description: Invalid credentials}
+        '403': {description: No active role assignment}
+        '503': {description: Authentication database/schema unavailable}
+  /admin-api/auth/refresh:
+    post:
+      operationId: refreshAdminToken
+      summary: Refresh a valid admin token
+      description: Requires an existing valid Bearer token. Returns a replacement signed token.
+      responses:
+        '200': {description: Success and replacement token, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}
+        '401': {description: Missing, invalid, or expired token}
+  /admin-api/uploads:
+    post:
+      operationId: uploadAdminImage
+      summary: Upload an image
+      description: Source verified. Multipart field file; accepts JPG, PNG, GIF, WEBP up to 5 MB with matching file signature. Writes a file; use only with approval/test fixtures.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '201': {description: Returns image_path and URL}
+        '400': {description: Missing or invalid image}
+        '401': {description: Authentication required}
+        '403': {description: Role is not permitted}
+  /admin-api/dashboard:
+    get:
+      operationId: getAdminDashboard
+      summary: Read dashboard summary
+      responses:
+        '200': {description: Dashboard counts, revenue, order status counts, recent orders, and low stock, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}
+        '401': {description: Authentication required}
+        '403': {description: Role is not permitted}
+  /admin-api/reports:
+    get:
+      operationId: getAdminReports
+      summary: Read reports
+      responses:
+        '200': {description: Report response; exact fields depend on report implementation}
+        '401': {description: Authentication required}
+        '403': {description: Role is not permitted}
+  /admin-api/categories:
+    get:
+      operationId: listAdminCategories
+      summary: List categories
+      parameters:
+        - {in: query, name: search, schema: {type: string}}
+        - {in: query, name: page, schema: {type: integer, minimum: 1, default: 1}}
+        - {in: query, name: page_size, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200': {description: count, page, page_size and results array}
+        '400': {description: Invalid pagination}
+        '401': {description: Authentication required}
+        '403': {description: Role is not permitted}
+    post:
+      operationId: createAdminCategory
+      summary: Create category (mutating; test data only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [name], properties: {name: {type: string, maxLength: 255}, image: {type: string, nullable: true}, active: {type: boolean, default: true}}}
+      responses:
+        '201': {description: Created category id, name, image and active}
+        '400': {description: Validation error}
+    patch:
+      operationId: updateAdminCategory
+      summary: Update category (mutating; test data only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [id], properties: {id: {type: integer}, name: {type: string}, image: {type: string, nullable: true}, active: {type: boolean}}}
+      responses:
+        '200': {description: Updated category}
+        '400': {description: Validation error}
+        '404': {description: Category not found}
+    delete:
+      operationId: deleteAdminCategory
+      summary: Delete category (destructive; do not run against shared data)
+      parameters:
+        - {in: query, name: id, required: true, schema: {type: integer}}
+      responses:
+        '204': {description: Deleted}
+        '400': {description: Invalid category ID}
+        '404': {description: Category not found}
+        '409': {description: Category still referenced}
+  /admin-api/subcategories:
+    get: {operationId: listAdminSubcategories, summary: List subcategories, responses: {'200': {description: List response}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminSubcategory, summary: Create subcategory (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    patch: {operationId: updateAdminSubcategory, summary: Update subcategory (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated}, '400': {description: Validation error}, '404': {description: Not found}}}
+    delete: {operationId: deleteAdminSubcategory, summary: Delete subcategory (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '400': {description: Invalid ID}, '404': {description: Not found}}}
+  /admin-api/products:
+    get: {operationId: listAdminProducts, summary: List products, parameters: [{in: query, name: search, schema: {type: string}}, {in: query, name: page, schema: {type: integer}}, {in: query, name: page_size, schema: {type: integer}}], responses: {'200': {description: Product list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminProduct, summary: Create product (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    patch: {operationId: updateAdminProduct, summary: Update product (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated}, '400': {description: Validation error}, '404': {description: Not found}}}
+    delete: {operationId: deleteAdminProduct, summary: Delete product (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '400': {description: Invalid ID}, '404': {description: Not found}}}
+  /admin-api/product-variants:
+    get: {operationId: listProductVariants, summary: List product variants, responses: {'200': {description: Variant list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createProductVariant, summary: Create product variant (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    patch: {operationId: updateProductVariant, summary: Update product variant (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated}, '400': {description: Validation error}, '404': {description: Not found}}}
+    delete: {operationId: deleteProductVariant, summary: Delete product variant (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/product-images:
+    get: {operationId: listProductImages, summary: List product images, responses: {'200': {description: Image list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createProductImage, summary: Add product image (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    delete: {operationId: deleteProductImage, summary: Delete product image (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/customers:
+    get: {operationId: listAdminCustomers, summary: List customers, responses: {'200': {description: Customer list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminCustomer, summary: Create customer (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    patch: {operationId: updateAdminCustomer, summary: Update customer (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated}, '400': {description: Validation error}, '404': {description: Not found}}}
+    delete: {operationId: deleteAdminCustomer, summary: Delete customer (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/orders:
+    get: {operationId: listAdminOrders, summary: List orders, responses: {'200': {description: Order list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminOrder, summary: Create order (mutating; isolated test data only), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created order}, '400': {description: Validation error}, '403': {description: Forbidden}}}
+    patch: {operationId: updateAdminOrder, summary: Update order (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated order}, '400': {description: Validation error}, '404': {description: Not found}}}
+  /admin-api/orders/manage:
+    get: {operationId: manageAdminOrders, summary: List orders with statistics and filter data, responses: {'200': {description: Orders, stats, filters, delivery_boys}, '400': {description: Invalid filters}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+  /admin-api/orders/bulk-assign:
+    post: {operationId: bulkAssignOrders, summary: Assign orders to delivery person (mutating), requestBody: {required: true, content: {application/json: {schema: {type: object, required: [order_ids, delivery_boy_id], properties: {order_ids: {type: array, items: {type: integer}}, delivery_boy_id: {type: integer}}}}}}, responses: {'200': {description: Assignment count and message}, '400': {description: Invalid IDs or delivery person}, '403': {description: Forbidden}}}
+  /admin-api/orders/{order_id}/detail:
+    parameters: [{in: path, name: order_id, required: true, schema: {type: integer}}]
+    get: {operationId: getAdminOrderDetail, summary: Read order detail, responses: {'200': {description: Order details and financial summary}, '404': {description: Not found}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    patch: {operationId: patchAdminOrderDetail, summary: Edit order details (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated order detail}, '400': {description: Validation error}, '404': {description: Not found}}}
+    delete: {operationId: deleteAdminOrder, summary: Delete order and associated rows (destructive), responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/orders/{order_id}/status:
+    parameters: [{in: path, name: order_id, required: true, schema: {type: integer}}]
+    post: {operationId: updateAdminOrderStatus, summary: Change order status (mutating), requestBody: {required: true, content: {application/json: {schema: {type: object, required: [status], properties: {status: {type: string}, status_message: {type: string}, delivery_boy_id: {type: integer, nullable: true}}}}}}, responses: {'200': {description: Updated order detail}, '400': {description: Invalid status or delivery person}, '403': {description: Role cannot set status}, '404': {description: Order not found}}}
+  /admin-api/banners:
+    get: {operationId: listAdminBanners, summary: List banners, responses: {'200': {description: Banner list including image_path and image_url}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminBanner, summary: Create banner (mutating), requestBody: {required: true, content: {application/json: {schema: {type: object, required: [image_path], properties: {image_path: {type: string}, text_content: {type: string}, styled_text: {type: string}, styled_color: {type: string}, background: {type: string}, text_content2: {type: string}}}}}}, responses: {'201': {description: Created banner id and image_path}, '400': {description: image_path required}}}
+    patch: {operationId: updateAdminBanner, summary: Update banner (mutating), requestBody: {required: true, content: {application/json: {schema: {type: object, required: [id], properties: {id: {type: integer}, image_path: {type: string}, text_content: {type: string}, styled_text: {type: string}, styled_color: {type: string}, background: {type: string}, text_content2: {type: string}}}}}}, responses: {'200': {description: Updated banner}, '400': {description: Invalid ID or image path}, '404': {description: Banner not found}}}
+    delete: {operationId: deleteAdminBanner, summary: Delete banner (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/notifications:
+    get: {operationId: listAdminNotifications, summary: List notifications, responses: {'200': {description: Notification list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminNotification, summary: Create notification (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    delete: {operationId: deleteAdminNotification, summary: Delete notification (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/warehouses:
+    get: {operationId: listAdminWarehouses, summary: List warehouses, responses: {'200': {description: Warehouse list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminWarehouse, summary: Create warehouse (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    patch: {operationId: updateAdminWarehouse, summary: Update warehouse (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated}, '404': {description: Not found}}}
+    delete: {operationId: deleteAdminWarehouse, summary: Delete warehouse (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/inventory:
+    get: {operationId: listAdminInventory, summary: Read inventory, responses: {'200': {description: Inventory response}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    patch: {operationId: updateAdminInventory, summary: Update inventory (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated inventory}, '400': {description: Validation error}}}
+  /admin-api/cart-discount-settings:
+    get: {operationId: getCartDiscountSettings, summary: Read cart discount settings, responses: {'200': {description: Discount configuration}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    put: {operationId: updateCartDiscountSettings, summary: Update cart discount settings (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Saved settings}, '400': {description: Validation error}}}
+  /admin-api/staff:
+    get: {operationId: listAdminStaff, summary: List staff, responses: {'200': {description: Staff list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminStaff, summary: Create staff (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    patch: {operationId: updateAdminStaff, summary: Update staff (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated}, '404': {description: Not found}}}
+    delete: {operationId: deleteAdminStaff, summary: Delete staff (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/advance-payments:
+    get: {operationId: listAdminAdvancePayments, summary: List advance payment offers, responses: {'200': {description: Offers}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminAdvancePayment, summary: Create advance payment offer (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    patch: {operationId: updateAdminAdvancePayment, summary: Update advance payment offer (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated}, '404': {description: Not found}}}
+    delete: {operationId: deleteAdminAdvancePayment, summary: Delete advance payment offer (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/advance-allocations:
+    get: {operationId: listAdvanceAllocations, summary: List advance allocations, responses: {'200': {description: Allocation list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdvanceAllocation, summary: Create advance allocation (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    patch: {operationId: updateAdvanceAllocation, summary: Update advance allocation (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated}, '404': {description: Not found}}}
+    delete: {operationId: deleteAdvanceAllocation, summary: Delete advance allocation (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/locations:
+    get: {operationId: listAdminLocations, summary: List locations, responses: {'200': {description: Location list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminLocation, summary: Create location (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    patch: {operationId: updateAdminLocation, summary: Update location (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated}, '404': {description: Not found}}}
+    delete: {operationId: deleteAdminLocation, summary: Delete location (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+  /admin-api/targets:
+    get: {operationId: listAdminTargets, summary: List targets, responses: {'200': {description: Target list}, '401': {description: Unauthorized}, '403': {description: Forbidden}}}
+    post: {operationId: createAdminTarget, summary: Create target (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'201': {description: Created}, '400': {description: Validation error}}}
+    patch: {operationId: updateAdminTarget, summary: Update target (mutating), requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}, responses: {'200': {description: Updated}, '404': {description: Not found}}}
+    delete: {operationId: deleteAdminTarget, summary: Delete target (destructive), parameters: [{in: query, name: id, required: true, schema: {type: integer}}], responses: {'204': {description: Deleted}, '404': {description: Not found}}}
+x-stokit-status: PARTIAL
+x-stokit-note: >-
+  HTTP methods and core request fields are source-derived. Generic schemas are intentionally
+  provisional where exact response fields are not fully verified. No write operation was run.

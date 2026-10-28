@@ -1,0 +1,3783 @@
+{
+  "generated_on": "2026-10-15",
+  "source_inventory": "STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+  "source_table_count": 45,
+  "excluded_table_count": 16,
+  "tables": [
+    {
+      "name": "a_cart",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 7,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "cart_id",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "username",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "variant_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "qty",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "datetime"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "api\\cart_action.php",
+        "api\\cart_api_test.php",
+        "api\\cart_api_test.-without-vip.php",
+        "api\\cart_api_test-2.php",
+        "api\\cart_api_test-suj.php",
+        "api\\order_post.php",
+        "api\\product-api-cart.php"
+      ],
+      "php_backup_reference_count": 7,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\crud.py",
+        "legacy_api\\views_cart.py",
+        "legacy_api\\views_commerce.py",
+        "legacy_api\\views_orders.py"
+      ],
+      "django_reference_count": 4,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "admins",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "EXISTING_TARGET_TABLE_PRESERVE",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Existing PostgreSQL table; preserve, do not recreate.",
+      "source_column_count": 11,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "username",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "email",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "fullname",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "password",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "phone",
+          "source_type": "varchar(250)"
+        },
+        {
+          "name": "address",
+          "source_type": "varchar(250)"
+        },
+        {
+          "name": "paymentDate",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "token",
+          "source_type": "varchar(1000)"
+        },
+        {
+          "name": "api_token",
+          "source_type": "varchar(64)"
+        },
+        {
+          "name": "last_login",
+          "source_type": "datetime"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\login.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\order_pages.py",
+        "adminapi\\tests_auth.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 3,
+      "django_audit_tool_reference_files": [
+        "adminapi\\tests_auth.py",
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 3,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "advance_pay_allocations",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 17,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "offer_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "user_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "payment_amount",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "bonus_percentage",
+          "source_type": "decimal(5,2)"
+        },
+        {
+          "name": "duration_months",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "total_credit",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "used_credit",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "remaining_credit",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "start_date",
+          "source_type": "date"
+        },
+        {
+          "name": "end_date",
+          "source_type": "date"
+        },
+        {
+          "name": "status",
+          "source_type": "enum('ACTIVE','EXPIRED','COMPLETED','CANCELLED')"
+        },
+        {
+          "name": "payment_date",
+          "source_type": "date"
+        },
+        {
+          "name": "payment_reference",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "notes",
+          "source_type": "text"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "updated_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `offer_id` (`offer_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `user_id` (`user_id`)"
+        },
+        {
+          "kind": "FOREIGN KEY",
+          "definition": "ADD CONSTRAINT `advance_pay_allocations_ibfk_1` FOREIGN KEY (`offer_id`) REFERENCES `advance_pay_offers` (`id`) ON DELETE CASCADE"
+        },
+        {
+          "kind": "FOREIGN KEY",
+          "definition": "ADD CONSTRAINT `advance_pay_allocations_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\allocate_offer.php",
+        "admin\\manage\\allocated_users.php",
+        "admin\\manage\\allocated_users_back.php",
+        "admin\\manage\\customers.php",
+        "admin\\manage\\delete_offer.php",
+        "admin\\manage\\edit_allocation.php",
+        "admin\\manage\\use_credit.php",
+        "admin\\manage\\view_allocation.php",
+        "api\\advancePay-api.php"
+      ],
+      "php_backup_reference_count": 9,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\bonus_credit.py",
+        "legacy_api\\views_finance.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 3,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "advance_pay_offers",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 10,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "offer_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "payment_amount",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "bonus_percentage",
+          "source_type": "decimal(5,2)"
+        },
+        {
+          "name": "duration_months",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "total_credit",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "status",
+          "source_type": "enum('ACTIVE','INACTIVE')"
+        },
+        {
+          "name": "image_path",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "updated_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\add_offer.php",
+        "admin\\manage\\allocate_offer.php",
+        "admin\\manage\\allocated_users.php",
+        "admin\\manage\\allocated_users_back.php",
+        "admin\\manage\\customers.php",
+        "admin\\manage\\delete_offer.php",
+        "admin\\manage\\edit_allocation.php",
+        "admin\\manage\\edit_offer.php",
+        "admin\\manage\\offers_list.php",
+        "admin\\manage\\use_credit.php",
+        "admin\\manage\\view_allocation.php",
+        "api\\advancePay-api.php"
+      ],
+      "php_backup_reference_count": 12,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "legacy_api\\views_finance.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 2,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "advance_pay_transactions",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 9,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "allocation_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "user_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "amount",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "transaction_type",
+          "source_type": "enum('CREDIT_USED','CREDIT_ADDED')"
+        },
+        {
+          "name": "reference_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "reference_type",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "notes",
+          "source_type": "text"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `allocation_id` (`allocation_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `user_id` (`user_id`)"
+        },
+        {
+          "kind": "FOREIGN KEY",
+          "definition": "ADD CONSTRAINT `advance_pay_transactions_ibfk_1` FOREIGN KEY (`allocation_id`) REFERENCES `advance_pay_allocations` (`id`) ON DELETE CASCADE"
+        },
+        {
+          "kind": "FOREIGN KEY",
+          "definition": "ADD CONSTRAINT `advance_pay_transactions_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\allocate_offer.php",
+        "admin\\manage\\allocated_users.php",
+        "admin\\manage\\allocated_users_back.php",
+        "admin\\manage\\use_credit.php",
+        "admin\\manage\\view_allocation.php"
+      ],
+      "php_backup_reference_count": 5,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\bonus_credit.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 2,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0003_advancepaytransaction.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "category_view",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 3,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "user",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "category_id",
+          "source_type": "int(11)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "api\\product-api.php",
+        "api\\recommended.php"
+      ],
+      "php_backup_reference_count": 2,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "legacy_api\\views_catalog.py"
+      ],
+      "django_reference_count": 1,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "delivery_boys",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 12,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "username",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "email",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "fullname",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "password",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "phone",
+          "source_type": "varchar(250)"
+        },
+        {
+          "name": "address",
+          "source_type": "varchar(250)"
+        },
+        {
+          "name": "paymentDate",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "token",
+          "source_type": "varchar(1000)"
+        },
+        {
+          "name": "api_token",
+          "source_type": "varchar(64)"
+        },
+        {
+          "name": "last_login",
+          "source_type": "datetime"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `username` (`username`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `email` (`email`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\delivery.php",
+        "admin\\manage\\delivery_boys.php",
+        "admin\\manage\\O.PHP",
+        "admin\\manage\\order.php",
+        "admin\\manage\\order_details.php",
+        "admin\\manage\\order-before-colour-warehouse-filter.php",
+        "admin\\manage\\req\\side_nav.php",
+        "admin\\manage\\theme.php",
+        "admin\\manage\\warehouse_details.php"
+      ],
+      "php_backup_reference_count": 9,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\order_pages.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 2,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [
+        "OrderDetailPage.jsx",
+        "OrdersPage.jsx"
+      ],
+      "react_reference_count": 2
+    },
+    {
+      "name": "notifications",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 9,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "customer_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "title",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "message",
+          "source_type": "text"
+        },
+        {
+          "name": "sent_by",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "is_read",
+          "source_type": "tinyint(1)"
+        },
+        {
+          "name": "read_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "recipient_type",
+          "source_type": "varchar(20)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `customer_id` (`customer_id`)"
+        },
+        {
+          "kind": "FOREIGN KEY",
+          "definition": "ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\notification.php",
+        "admin\\manage\\req\\side_nav.php",
+        "admin\\manage\\theme.php",
+        "admin\\manage\\zPolicy.php",
+        "api\\noti_list.php"
+      ],
+      "php_backup_reference_count": 5,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "accounts\\tests_roles.py",
+        "adminapi\\operations.py",
+        "adminapi\\permissions.py",
+        "adminapi\\urls.py",
+        "legacy_api\\tests_contract.py",
+        "legacy_api\\tests_postgres_sql.py",
+        "legacy_api\\views_commerce.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 8,
+      "django_audit_tool_reference_files": [
+        "accounts\\tests_roles.py",
+        "legacy_api\\tests_contract.py",
+        "legacy_api\\tests_postgres_sql.py",
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 5,
+      "react_reference_files": [
+        "App.jsx",
+        "NotificationsPage.jsx"
+      ],
+      "react_reference_count": 2
+    },
+    {
+      "name": "salesmen",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 14,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "username",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "email",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "fullname",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "password",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "phone",
+          "source_type": "varchar(20)"
+        },
+        {
+          "name": "address",
+          "source_type": "text"
+        },
+        {
+          "name": "commission_rate",
+          "source_type": "decimal(5,2)"
+        },
+        {
+          "name": "hire_date",
+          "source_type": "date"
+        },
+        {
+          "name": "target_sales",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "token",
+          "source_type": "varchar(64)"
+        },
+        {
+          "name": "api_token",
+          "source_type": "varchar(64)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "updated_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `username` (`username`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `email` (`email`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\req\\side_nav.php",
+        "admin\\manage\\salesmen.php",
+        "admin\\manage\\warehouse_details.php"
+      ],
+      "php_backup_reference_count": 3,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\crud.py",
+        "adminapi\\operations.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 3,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0002_salesman_target_targetachievement_targetassignment.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [
+        "App.jsx"
+      ],
+      "react_reference_count": 1
+    },
+    {
+      "name": "users",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 31,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "username",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "password",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "email",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "fullname",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "shop_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "phone",
+          "source_type": "varchar(20)"
+        },
+        {
+          "name": "city",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "category_id",
+          "source_type": "varchar(125)"
+        },
+        {
+          "name": "address",
+          "source_type": "text"
+        },
+        {
+          "name": "status",
+          "source_type": "enum('ACTIVE','INACTIVE','SUSPENDED')"
+        },
+        {
+          "name": "gst",
+          "source_type": "enum('Y','N')"
+        },
+        {
+          "name": "gst_type",
+          "source_type": "enum('REGULAR','COMPOUND')"
+        },
+        {
+          "name": "vip_discount",
+          "source_type": "enum('Y','N')"
+        },
+        {
+          "name": "vip_percentage",
+          "source_type": "decimal(5,2)"
+        },
+        {
+          "name": "store_maped",
+          "source_type": "enum('Y','N')"
+        },
+        {
+          "name": "profile_picture",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "updated_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "token",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "latitude",
+          "source_type": "varchar(125)"
+        },
+        {
+          "name": "longitude",
+          "source_type": "varchar(125)"
+        },
+        {
+          "name": "gst_number",
+          "source_type": "varchar(20)"
+        },
+        {
+          "name": "gst_percentage",
+          "source_type": "decimal(5,2)"
+        },
+        {
+          "name": "delivery_charges",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "color_code",
+          "source_type": "varchar(20)"
+        },
+        {
+          "name": "warehouse_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "vip_from_date",
+          "source_type": "date"
+        },
+        {
+          "name": "vip_to_date",
+          "source_type": "date"
+        },
+        {
+          "name": "vip_start_date",
+          "source_type": "date"
+        },
+        {
+          "name": "vip_end_date",
+          "source_type": "date"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `email` (`email`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `username` (`username`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\acc\\index.php",
+        "admin\\manage\\acc\\reset.php",
+        "admin\\manage\\addCustomer.php",
+        "admin\\manage\\allocate_offer.php",
+        "admin\\manage\\allocated_users.php",
+        "admin\\manage\\allocated_users_back.php",
+        "admin\\manage\\customers.php",
+        "admin\\manage\\delivery.php",
+        "admin\\manage\\edit_allocation.php",
+        "admin\\manage\\editCustomer.php",
+        "admin\\manage\\get_target_data.php",
+        "admin\\manage\\notification.php",
+        "admin\\manage\\O.PHP",
+        "admin\\manage\\order.php",
+        "admin\\manage\\order_details.php",
+        "admin\\manage\\pass.php",
+        "admin\\manage\\q.php",
+        "admin\\manage\\req\\side_nav.php",
+        "admin\\manage\\targets.php",
+        "admin\\manage\\theme.php",
+        "admin\\manage\\use_credit.php",
+        "admin\\manage\\view_allocation.php",
+        "admin\\manage\\warehouse_details.php",
+        "admin\\manage\\welcome.php",
+        "admin\\manage\\welcome-old.php",
+        "admin\\manage\\zPolicy.php",
+        "admin\\manage\\zTerms.php",
+        "api\\acc\\index.php",
+        "api\\acc\\reset.php",
+        "api\\cart_api_test.php",
+        "api\\cart_api_test.-without-vip.php",
+        "api\\cart_api_test-suj.php",
+        "api\\category.php",
+        "api\\crd_rel.php",
+        "api\\geocode.php",
+        "api\\highlights.php",
+        "api\\login.php",
+        "api\\noti_list.php",
+        "api\\notify.php",
+        "api\\notify3.php",
+        "api\\order_cancel.php",
+        "api\\order_details.php",
+        "api\\order_details-no-pricing.php",
+        "api\\order_post.php",
+        "api\\orders.php",
+        "api\\profile.php",
+        "api\\recommended.php",
+        "api\\targets.php",
+        "api\\token.php"
+      ],
+      "php_backup_reference_count": 49,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "accounts\\models.py",
+        "accounts\\services.py",
+        "adminapi\\advance_allocations.py",
+        "adminapi\\bonus_credit.py",
+        "adminapi\\operations.py",
+        "adminapi\\order_pages.py",
+        "legacy_api\\views_auth.py",
+        "legacy_api\\views_catalog.py",
+        "legacy_api\\views_commerce.py",
+        "legacy_api\\views_finance.py",
+        "legacy_api\\views_orders.py",
+        "legacy_api\\views_remaining.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 13,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\dump_integrity_readonly.py",
+        "scripts\\read_only_audits\\fingerprints_readonly.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py",
+        "scripts\\read_only_audits\\rowcount_reconciliation_readonly.py",
+        "scripts\\read_only_audits\\source_column_diff_readonly.py",
+        "scripts\\read_only_audits\\timestamps_orphans_readonly.py",
+        "scripts\\read_only_audits\\trigger_body_compare_readonly.py",
+        "scripts\\test_stokit_pg_migration.py"
+      ],
+      "django_audit_tool_reference_count": 9,
+      "react_reference_files": [
+        "App.jsx",
+        "CustomersPage.jsx",
+        "NotificationsPage.jsx"
+      ],
+      "react_reference_count": 3
+    },
+    {
+      "name": "users1",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 11,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "username",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "email",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "fullname",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "password",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "phone",
+          "source_type": "varchar(250)"
+        },
+        {
+          "name": "address",
+          "source_type": "varchar(250)"
+        },
+        {
+          "name": "paymentDate",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "token",
+          "source_type": "varchar(1000)"
+        },
+        {
+          "name": "api_token",
+          "source_type": "varchar(64)"
+        },
+        {
+          "name": "last_login",
+          "source_type": "datetime"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "warehouse_delivery_boys",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 4,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "warehouse_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "delivery_boy_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `unique_warehouse_delivery_boy` (`warehouse_id`,`delivery_boy_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `warehouse_id` (`warehouse_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `delivery_boy_id` (`delivery_boy_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\warehouse_details.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\operations.py"
+      ],
+      "django_reference_count": 1,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "warehouse_salesmen",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 4,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "warehouse_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "salesman_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `unique_warehouse_salesman` (`warehouse_id`,`salesman_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `warehouse_id` (`warehouse_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `salesman_id` (`salesman_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\warehouse_details.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\operations.py"
+      ],
+      "django_reference_count": 1,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_api_keys",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 12,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "key_type",
+          "source_type": "enum('captcha','payment')"
+        },
+        {
+          "name": "service_name",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "key_name",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "key_value",
+          "source_type": "text"
+        },
+        {
+          "name": "merchant_id",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "salt_key",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "payment_mode",
+          "source_type": "enum('test','live')"
+        },
+        {
+          "name": "is_active",
+          "source_type": "tinyint(1)"
+        },
+        {
+          "name": "description",
+          "source_type": "text"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "updated_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_key_type` (`key_type`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_service` (`service_name`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_active` (`is_active`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_banner",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 14,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "bg_image",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "timer_days",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "timer_hours",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "timer_minutes",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "timer_seconds",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "heading",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "paragraph",
+          "source_type": "text"
+        },
+        {
+          "name": "button_text",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "button_link",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "last_updated",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "view",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "count",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "banner_slot",
+          "source_type": "varchar(255)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_brands",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 2,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "image",
+          "source_type": "varchar(255)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\brands.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_category",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 4,
+      "source_columns": [
+        {
+          "name": "category_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "category_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "category_image",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "category_active",
+          "source_type": "tinyint(1)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`category_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "api\\category.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "legacy_api\\views_catalog.py",
+        "legacy_api\\views_remaining.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 3,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_checkout",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 18,
+      "source_columns": [
+        {
+          "name": "order_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "user",
+          "source_type": "varchar(120)"
+        },
+        {
+          "name": "full_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "address",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "city",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "state",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "postal_code",
+          "source_type": "varchar(20)"
+        },
+        {
+          "name": "country",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "phone",
+          "source_type": "varchar(20)"
+        },
+        {
+          "name": "email",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "total_amount",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "order_date",
+          "source_type": "datetime"
+        },
+        {
+          "name": "status",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "delivery_boy_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "view",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "payment_method",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "shipping_charge",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "cod_charge",
+          "source_type": "decimal(10,2)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`order_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\O.PHP",
+        "admin\\manage\\order.php",
+        "admin\\manage\\order-before-colour-warehouse-filter.php",
+        "admin\\manage\\sales.php",
+        "admin\\manage\\theme.php",
+        "admin\\manage\\warehouse_details.php",
+        "admin\\manage\\welcome.php",
+        "admin\\manage\\welcome-old.php",
+        "api\\crd_rel.php",
+        "api\\order_cancel.php",
+        "api\\order_details.php",
+        "api\\order_details-no-pricing.php",
+        "api\\order_post.php",
+        "api\\orders.php"
+      ],
+      "php_backup_reference_count": 14,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\order_pages.py",
+        "legacy_api\\views_finance.py",
+        "legacy_api\\views_orders.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 4,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_cod",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 8,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "cod_enabled",
+          "source_type": "enum('Y','N')"
+        },
+        {
+          "name": "charges",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "shipping_type",
+          "source_type": "enum('fixed','price_based')"
+        },
+        {
+          "name": "fixed_shipping_charge",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "min_order_amount",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "shipping_charge_below_min",
+          "source_type": "decimal(10,2)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\cod.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_discount_banners",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 4,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "image_path",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `product_id` (`product_id`)"
+        },
+        {
+          "kind": "FOREIGN KEY",
+          "definition": "ADD CONSTRAINT `fk_discount_banners_product` FOREIGN KEY (`product_id`) REFERENCES `zg_product` (`product_id`) ON DELETE CASCADE"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [
+        "legacy_api\\views_catalog.py"
+      ],
+      "django_reference_count": 1,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_favorites",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 4,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "user_id",
+          "source_type": "varchar(125)"
+        },
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "datetime"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `unique_user_product` (`user_id`,`product_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "api\\favpage.php",
+        "api\\highlights.php",
+        "api\\recommended.php"
+      ],
+      "php_backup_reference_count": 3,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\crud.py",
+        "legacy_api\\views_catalog.py",
+        "legacy_api\\views_favorites.py"
+      ],
+      "django_reference_count": 3,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_headings",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 8,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "heading1",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "heading2",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "heading3",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "heading4",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "heading5",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "heading6",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "heading7",
+          "source_type": "varchar(225)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_headings_new",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 5,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "button_name",
+          "source_type": "varchar(125)"
+        },
+        {
+          "name": "image",
+          "source_type": "varchar(500)"
+        },
+        {
+          "name": "updated_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\editProduct.php",
+        "admin\\manage\\product.php"
+      ],
+      "php_backup_reference_count": 2,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_location",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 2,
+      "source_columns": [
+        {
+          "name": "location_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "city_name",
+          "source_type": "varchar(100)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`location_id`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `city_name` (`city_name`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\editCustomer.php",
+        "admin\\manage\\warehouse.php"
+      ],
+      "php_backup_reference_count": 2,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\operations.py"
+      ],
+      "django_reference_count": 1,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_logo",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 6,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "file",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "type",
+          "source_type": "enum('logo','favicon')"
+        },
+        {
+          "name": "favico",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "updated_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_type` (`type`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_order_items",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 10,
+      "source_columns": [
+        {
+          "name": "item_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "order_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "variant_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "product_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "variant_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "quantity",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "price",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "discount",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "total_price",
+          "source_type": "decimal(10,2)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`item_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `order_id` (`order_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "api\\crd_rel.php",
+        "api\\order_details.php",
+        "api\\order_details-no-pricing.php",
+        "api\\order_post.php",
+        "api\\orders.php"
+      ],
+      "php_backup_reference_count": 5,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\order_pages.py",
+        "legacy_api\\views_finance.py",
+        "legacy_api\\views_orders.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 4,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_order_status_history",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 5,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "order_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "status",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "changed_at",
+          "source_type": "datetime"
+        },
+        {
+          "name": "message",
+          "source_type": "text"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `order_id` (`order_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "api\\order_details.php",
+        "api\\order_details-no-pricing.php"
+      ],
+      "php_backup_reference_count": 2,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\order_pages.py",
+        "legacy_api\\views_orders.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 3,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_product",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 41,
+      "source_columns": [
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "code",
+          "source_type": "varchar(250)"
+        },
+        {
+          "name": "stock",
+          "source_type": "varchar(250)"
+        },
+        {
+          "name": "product_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "color",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "product_price",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "mrp",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "product_discount",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "product_description",
+          "source_type": "text"
+        },
+        {
+          "name": "product_keywords",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "subtitle",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "brand",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "youtube_link",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "share_image",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "product_details",
+          "source_type": "longtext"
+        },
+        {
+          "name": "additional_details",
+          "source_type": "longtext"
+        },
+        {
+          "name": "moq",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "set_of",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "quantity_selected",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "discount_value",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "discount_percent",
+          "source_type": "decimal(5,2)"
+        },
+        {
+          "name": "set_contains",
+          "source_type": "longtext"
+        },
+        {
+          "name": "category_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "subcategory_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "top",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "hand",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "top2",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "hand2",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "heading5_tag",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "heading6_tag",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "heading7_tag",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "added",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "view",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "highlight",
+          "source_type": "tinyint(1)"
+        },
+        {
+          "name": "gst_applicable",
+          "source_type": "varchar(1)"
+        },
+        {
+          "name": "gst_percentage",
+          "source_type": "decimal(5,2)"
+        },
+        {
+          "name": "gst_price",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "has_disc",
+          "source_type": "int(1)"
+        },
+        {
+          "name": "warehouse_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "no_discount_banner",
+          "source_type": "enum('Y','N')"
+        },
+        {
+          "name": "disable_variants",
+          "source_type": "enum('Y','N')"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`product_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_moq` (`moq`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_brand` (`brand`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_youtube` (`youtube_link`(100))"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `subcategory_id` (`subcategory_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\sub_categories.php",
+        "api\\favpage.php",
+        "api\\getCategory.php",
+        "api\\order_post.php",
+        "api\\product-api.php"
+      ],
+      "php_backup_reference_count": 5,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "legacy_api\\views_catalog.py",
+        "legacy_api\\views_commerce.py",
+        "legacy_api\\views_favorites.py",
+        "legacy_api\\views_orders.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 5,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\dump_integrity_readonly.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 3,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_product_images",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 4,
+      "source_columns": [
+        {
+          "name": "image_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "image_path",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "main",
+          "source_type": "varchar(255)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`image_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "api\\favpage.php",
+        "api\\getCategory.php",
+        "api\\order_details.php",
+        "api\\order_details-no-pricing.php",
+        "api\\orders.php"
+      ],
+      "php_backup_reference_count": 5,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\order_pages.py",
+        "legacy_api\\views_catalog.py",
+        "legacy_api\\views_commerce.py",
+        "legacy_api\\views_favorites.py",
+        "legacy_api\\views_orders.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 6,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_product_warehouse",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 3,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "warehouse_id",
+          "source_type": "int(11)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `unique_mapping` (`product_id`,`warehouse_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `warehouse_id` (`warehouse_id`)"
+        },
+        {
+          "kind": "FOREIGN KEY",
+          "definition": "ADD CONSTRAINT `zg_product_warehouse_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `zg_product` (`product_id`) ON DELETE CASCADE"
+        },
+        {
+          "kind": "FOREIGN KEY",
+          "definition": "ADD CONSTRAINT `zg_product_warehouse_ibfk_2` FOREIGN KEY (`warehouse_id`) REFERENCES `zg_warehouse` (`warehouse_id`) ON DELETE CASCADE"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_reels",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 5,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "url",
+          "source_type": "varchar(500)"
+        },
+        {
+          "name": "embed_code",
+          "source_type": "text"
+        },
+        {
+          "name": "thumbnail_url",
+          "source_type": "varchar(500)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\reels.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_slider",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 7,
+      "source_columns": [
+        {
+          "name": "slider_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "image_path",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "text_content",
+          "source_type": "text"
+        },
+        {
+          "name": "styled_text",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "styled_color",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "back",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "text_content2",
+          "source_type": "varchar(255)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`slider_id`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [
+        "legacy_api\\views_catalog.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 2,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_social_media",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 5,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "facebook",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "instagram",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "youtube",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "linkedin",
+          "source_type": "varchar(255)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\navbar.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_stock_log",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 6,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "variant_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "adjustment",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "reason",
+          "source_type": "text"
+        },
+        {
+          "name": "admin",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "datetime"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `variant_id` (`variant_id`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 1,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_subcategory",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 5,
+      "source_columns": [
+        {
+          "name": "subcategory_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "subcategory_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "category_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "subcategory_image",
+          "source_type": "varchar(500)"
+        },
+        {
+          "name": "subcategory_active",
+          "source_type": "tinyint(1)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`subcategory_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `category_id` (`category_id`)"
+        },
+        {
+          "kind": "FOREIGN KEY",
+          "definition": "ADD CONSTRAINT `fk_zg_subcategory_category` FOREIGN KEY (`category_id`) REFERENCES `zg_category` (`category_id`) ON DELETE CASCADE"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\editProduct.php",
+        "api\\getCategory.php"
+      ],
+      "php_backup_reference_count": 2,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "legacy_api\\views_catalog.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 2,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_target_achievements",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 12,
+      "source_columns": [
+        {
+          "name": "achievement_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "target_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "user_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "total_spent",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "order_count",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "progress_percentage",
+          "source_type": "decimal(5,2)"
+        },
+        {
+          "name": "is_achieved",
+          "source_type": "tinyint(1)"
+        },
+        {
+          "name": "achieved_date",
+          "source_type": "date"
+        },
+        {
+          "name": "last_order_date",
+          "source_type": "date"
+        },
+        {
+          "name": "last_order_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "updated_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`achievement_id`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `unique_user_target` (`target_id`,`user_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_user_id` (`user_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_target_id` (`target_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_achieved` (`is_achieved`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [
+        "legacy_api\\views_remaining.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 2,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0002_salesman_target_targetachievement_targetassignment.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_target_activity_log",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 7,
+      "source_columns": [
+        {
+          "name": "log_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "target_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "user_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "action",
+          "source_type": "enum('CREATED','UPDATED','DELETED','ASSIGNED','UNASSIGNED','ACHIEVED','RECALCULATED')"
+        },
+        {
+          "name": "details",
+          "source_type": "text"
+        },
+        {
+          "name": "ip_address",
+          "source_type": "varchar(45)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`log_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_target` (`target_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_user` (`user_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_action` (`action`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_target_assignments",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 9,
+      "source_columns": [
+        {
+          "name": "assignment_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "target_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "user_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "achieved_amount",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "order_count",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "status",
+          "source_type": "enum('PENDING','ACHIEVED','FAILED')"
+        },
+        {
+          "name": "achieved_date",
+          "source_type": "date"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "updated_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`assignment_id`)"
+        },
+        {
+          "kind": "UNIQUE",
+          "definition": "ADD UNIQUE KEY `unique_assignment` (`target_id`,`user_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_user` (`user_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_status` (`status`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_achieved` (`achieved_date`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [
+        "adminapi\\crud.py",
+        "legacy_api\\views_remaining.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 3,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0002_salesman_target_targetachievement_targetassignment.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_targets",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 13,
+      "source_columns": [
+        {
+          "name": "target_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "target_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "category_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "target_amount",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "reward_description",
+          "source_type": "text"
+        },
+        {
+          "name": "reward_image",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "scheme_benefits",
+          "source_type": "text"
+        },
+        {
+          "name": "start_date",
+          "source_type": "date"
+        },
+        {
+          "name": "end_date",
+          "source_type": "date"
+        },
+        {
+          "name": "status",
+          "source_type": "enum('ACTIVE','INACTIVE','COMPLETED')"
+        },
+        {
+          "name": "created_by",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "created_at",
+          "source_type": "timestamp"
+        },
+        {
+          "name": "updated_at",
+          "source_type": "timestamp"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`target_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_category` (`category_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_status` (`status`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `idx_dates` (`start_date`,`end_date`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [
+        "adminapi\\operations.py",
+        "legacy_api\\views_remaining.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 3,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0002_salesman_target_targetachievement_targetassignment.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_testy",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 5,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "image",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "text1",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "text2",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "text3",
+          "source_type": "text"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\testmo.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_vari_product",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 12,
+      "source_columns": [
+        {
+          "name": "id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "var_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "ver_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "product_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "product_price",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "product_discount",
+          "source_type": "decimal(5,2)"
+        },
+        {
+          "name": "product_description",
+          "source_type": "text"
+        },
+        {
+          "name": "product_keywords",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "top",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "hand",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "added",
+          "source_type": "varchar(255)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `hal_product_ibfk_1` (`product_id`)"
+        }
+      ],
+      "php_backup_reference_files": [],
+      "php_backup_reference_count": 0,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "No literal table-name reference found in scanned PHP backup files; absence does not prove unused.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_vari_product_images",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 5,
+      "source_columns": [
+        {
+          "name": "image_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "var_id",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "image_path",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "main",
+          "source_type": "varchar(255)"
+        }
+      ],
+      "source_key_definitions": [],
+      "php_backup_reference_files": [
+        "admin\\manage\\col.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_vari_variant",
+      "source_engine": "InnoDB",
+      "classification": "EXCLUDED_PENDING_DEPENDENCY_REVIEW",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Previously excluded; requires PHP/API/UI dependency review.",
+      "source_column_count": 5,
+      "source_columns": [
+        {
+          "name": "variant_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "variant_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "variant_price",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "disc",
+          "source_type": "varchar(255)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`variant_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `product_id` (`product_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\edit_col.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [],
+      "django_reference_count": 0,
+      "django_audit_tool_reference_files": [
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 1,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_variant",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 11,
+      "source_columns": [
+        {
+          "name": "variant_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "variant_name",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "variant_price",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "mrp",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "product_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "disc",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "quantity",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "gst",
+          "source_type": "enum('Y','N')"
+        },
+        {
+          "name": "gst_price",
+          "source_type": "decimal(10,2)"
+        },
+        {
+          "name": "category_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "subcategory_id",
+          "source_type": "int(11)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`variant_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `product_id` (`product_id`)"
+        },
+        {
+          "kind": "INDEX",
+          "definition": "ADD KEY `subcategory_id` (`subcategory_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "api\\order_post.php"
+      ],
+      "php_backup_reference_count": 1,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "legacy_api\\views_catalog.py",
+        "legacy_api\\views_commerce.py",
+        "legacy_api\\views_orders.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 4,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    },
+    {
+      "name": "zg_warehouse",
+      "source_engine": "InnoDB",
+      "classification": "PROPOSED_PENDING_EVIDENCE",
+      "target_status": "NOT_CONFIRMED_IN_TARGET",
+      "evidence": "django_backend/docs/STOKIT_SOURCE_SCHEMA_INVENTORY.md",
+      "approval": "NOT_APPROVED",
+      "notes": "Source dump presence alone does not authorize creation.",
+      "source_column_count": 8,
+      "source_columns": [
+        {
+          "name": "warehouse_id",
+          "source_type": "int(11)"
+        },
+        {
+          "name": "warehouse_name",
+          "source_type": "varchar(100)"
+        },
+        {
+          "name": "address",
+          "source_type": "varchar(255)"
+        },
+        {
+          "name": "pincode",
+          "source_type": "varchar(10)"
+        },
+        {
+          "name": "state",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "place",
+          "source_type": "varchar(50)"
+        },
+        {
+          "name": "latitude",
+          "source_type": "decimal(10,8)"
+        },
+        {
+          "name": "longitude",
+          "source_type": "decimal(11,8)"
+        }
+      ],
+      "source_key_definitions": [
+        {
+          "kind": "PRIMARY KEY",
+          "definition": "ADD PRIMARY KEY (`warehouse_id`)"
+        }
+      ],
+      "php_backup_reference_files": [
+        "admin\\manage\\editProduct.php",
+        "admin\\manage\\O.PHP",
+        "admin\\manage\\product.php",
+        "api\\highlights.php",
+        "api\\recommended.php"
+      ],
+      "php_backup_reference_count": 5,
+      "active_php_source_confirmed": false,
+      "phase4_reference_assessment": "Literal table reference found in PHP backup snapshot; active-source authority not confirmed.",
+      "django_reference_files": [
+        "adminapi\\operations.py",
+        "adminapi\\order_pages.py",
+        "legacy_api\\views_catalog.py",
+        "legacydb\\models.py"
+      ],
+      "django_reference_count": 4,
+      "django_audit_tool_reference_files": [
+        "legacydb\\migrations\\0001_initial.py",
+        "scripts\\read_only_audits\\phase_a_manifest_readonly.py"
+      ],
+      "django_audit_tool_reference_count": 2,
+      "react_reference_files": [],
+      "react_reference_count": 0
+    }
+  ],
+  "limitations": [
+    "Source inventory is structural evidence, not approval to create tables.",
+    "Column-level PostgreSQL conversion decisions remain blocked.",
+    "Target state is based on prior audit unless explicitly reverified during this run."
+  ],
+  "phase4_audit": {
+    "audited_at": "2026-10-15 21:35:15 +05:30",
+    "workspace": "C:\\Users\\.MSI\\Downloads\\StokIt Backend",
+    "php_source_snapshot": "C:\\Users\\.MSI\\Downloads\\StokIt_PHP_Backup_20261012\\Host",
+    "php_source_snapshot_exists": true,
+    "active_php_source_root_confirmed": false,
+    "php_files_scanned": 153,
+    "django_python_files_scanned": 85,
+    "react_source_files_scanned": 20,
+    "source_inventory_reused": "C:\\Users\\.MSI\\Downloads\\StokIt Backend\\django_backend\\docs\\STOKIT_SOURCE_SCHEMA_INVENTORY.json",
+    "independent_original_dump_rescan_performed": false,
+    "live_postgresql_read_only_check": "PASS",
+    "target_database": "stokit_postgres_dev",
+    "target_server": "PostgreSQL 18.6 at 127.0.0.1:5432; schema public",
+    "public_base_table_count": 3,
+    "public_base_tables": [
+      "admin_cart_discount_settings",
+      "admins",
+      "django_migrations"
+    ],
+    "row_counts": {
+      "django_migrations": 1,
+      "admin_cart_discount_settings": 0,
+      "admins": 0
+    },
+    "migration_records": [
+      {
+        "app": "adminapi",
+        "name": "0001_cart_discount_settings",
+        "applied": "2026-10-15 15:44:38.022359+05:30"
+      }
+    ],
+    "target_writes_performed": false,
+    "note": "PHP references are from the dated backup snapshot only; active PHP source was not confirmed. Literal table-name scan does not establish full API/UI dependency coverage.",
+    "tuple_count_recheck": {
+      "parser_script": "django_backend/scripts/read_only_audits/dump_integrity_readonly.py; scan() invoked directly, no report file written",
+      "original_insert_statements_standard_escape": 39,
+      "original_tuples_standard_escape": 3224,
+      "sanitized_insert_statements_standard_escape": 39,
+      "sanitized_tuples_standard_escape": 3224,
+      "original_insert_statements_no_backslash_escape": 39,
+      "original_tuples_no_backslash_escape": 3224,
+      "sanitized_insert_statements_no_backslash_escape": 39,
+      "sanitized_tuples_no_backslash_escape": 3224,
+      "zg_product_statement_tuple_counts": [
+        12,
+        1,
+        7
+      ],
+      "previous_3219_count_reproduced": false,
+      "assessment": "Current parser consistently counts 3224 tuples in both original and sanitized dumps under both escape modes. Historical 3219 count is not reproduced; its prior origin is still unknown."
+    }
+  },
+  "master_completion_pass_20261016": {
+    "note": "Evidence only; approved schema and exclusions unchanged. Django-managed tables (12) are provisioned by migrations and are not listed in this inventory.",
+    "django_managed_tables_not_listed": [
+      "accounts_adminroleassignment",
+      "accounts_checkoutpayload",
+      "accounts_devicetoken",
+      "accounts_passwordresetotp",
+      "accounts_userdevicesession",
+      "auth_group",
+      "auth_group_permissions",
+      "auth_permission",
+      "auth_user",
+      "auth_user_groups",
+      "auth_user_user_permissions",
+      "django_content_type"
+    ],
+    "excluded_table_php_backup_references_after_prefix_resolution": {
+      "users1": {
+        "hits": 0,
+        "files": [],
+        "operations": "none"
+      },
+      "zg_api_keys": {
+        "hits": 8,
+        "files": [
+          "admin/manage/keys.php"
+        ],
+        "operations": "DELETE x1, INSERT x2, SELECT/read x2, UPDATE x3"
+      },
+      "zg_banner": {
+        "hits": 15,
+        "files": [
+          "admin/manage/ban_timer.php",
+          "admin/manage/login.php"
+        ],
+        "operations": "DELETE x1, INSERT x1, SELECT/read x10, UPDATE x3"
+      },
+      "zg_brands": {
+        "hits": 5,
+        "files": [
+          "admin/manage/brands.php"
+        ],
+        "operations": "DELETE x1, INSERT x1, SELECT/read x3"
+      },
+      "zg_cod": {
+        "hits": 4,
+        "files": [
+          "admin/manage/cod.php"
+        ],
+        "operations": "INSERT x1, SELECT/read x2, UPDATE x1"
+      },
+      "zg_headings": {
+        "hits": 2,
+        "files": [
+          "admin/manage/heading4.php"
+        ],
+        "operations": "SELECT/read x1, UPDATE x1"
+      },
+      "zg_headings_new": {
+        "hits": 12,
+        "files": [
+          "admin/manage/editProduct.php",
+          "admin/manage/headings.php",
+          "admin/manage/product.php"
+        ],
+        "operations": "INSERT x1, SELECT/read x6, UPDATE x3, comment-only x2"
+      },
+      "zg_logo": {
+        "hits": 9,
+        "files": [
+          "admin/manage/logo.php"
+        ],
+        "operations": "DELETE x2, INSERT x1, SELECT/read x5, UPDATE x1"
+      },
+      "zg_product_warehouse": {
+        "hits": 8,
+        "files": [
+          "admin/manage/editProduct.php",
+          "admin/manage/product.php",
+          "admin/manage/warehouse_details.php"
+        ],
+        "operations": "DELETE x2, INSERT x1, SELECT/read x4, comment-only x1"
+      },
+      "zg_reels": {
+        "hits": 5,
+        "files": [
+          "admin/manage/reels.php"
+        ],
+        "operations": "DELETE x1, INSERT x1, SELECT/read x2, UPDATE x1"
+      },
+      "zg_social_media": {
+        "hits": 3,
+        "files": [
+          "admin/manage/navbar.php",
+          "admin/manage/social.php"
+        ],
+        "operations": "SELECT/read x2, UPDATE x1"
+      },
+      "zg_target_activity_log": {
+        "hits": 0,
+        "files": [],
+        "operations": "none"
+      },
+      "zg_testy": {
+        "hits": 10,
+        "files": [
+          "admin/manage/testmo.php"
+        ],
+        "operations": "DELETE x1, INSERT x2, SELECT/read x4, UPDATE x2, comment-only x1"
+      },
+      "zg_vari_product": {
+        "hits": 7,
+        "files": [
+          "admin/manage/add_col.php",
+          "admin/manage/col.php",
+          "admin/manage/edit_col.php",
+          "admin/manage/edit_col_.php"
+        ],
+        "operations": "DELETE x1, INSERT x1, SELECT/read x3, UPDATE x2"
+      },
+      "zg_vari_product_images": {
+        "hits": 16,
+        "files": [
+          "admin/manage/add_col.php",
+          "admin/manage/col.php",
+          "admin/manage/edit_col.php",
+          "admin/manage/edit_col_.php"
+        ],
+        "operations": "DELETE x3, INSERT x3, SELECT/read x6, UPDATE x4"
+      },
+      "zg_vari_variant": {
+        "hits": 5,
+        "files": [
+          "admin/manage/col.php",
+          "admin/manage/edit_col.php"
+        ],
+        "operations": "DELETE x2, INSERT x1, SELECT/read x1, comment-only x1"
+      }
+    },
+    "php_provenance": "BLOCKED - backup only; uniform extraction mtimes; no VCS/deploy evidence",
+    "city_name_collation": "BLOCKED - see STOKIT_CITY_NAME_COLLATION_EVAL.json"
+  }
+}

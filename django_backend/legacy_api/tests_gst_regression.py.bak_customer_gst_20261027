@@ -1,0 +1,112 @@
+"""GST regression tests: admin-saved configuration is the only source of GST (no hardcoded rate, no stale amounts).
+
+Evidence level: UNIT / REGRESSION against the in-memory SQL stand-in from tests_cart plus pure rule tests.
+Uses isolated fake data only; no database, no migrations.
+"""
+from decimal import Decimal
+
+from django.test import RequestFactory, SimpleTestCase
+
+from legacy_api import views_commerce
+from legacy_api.tests_auth import BEARER, body_of
+from legacy_api.tests_cart import PRODUCTS, FakeCartDb, add, cart_env, fetch_cart
+from legacydb.gst_rules import calculate_gst_amount, effective_gst_settings, validate_gst_configuration
+
+rf = RequestFactory()
+
+
+def _summary(cart):
+    return cart["cart_items"]["final_summary"]
+
+
+class CentralRuleTests(SimpleTestCase):
+    def test_disabled_product_is_zero_even_with_stale_percentage_and_amount(self):
+        self.assertEqual(calculate_gst_amount(unit_price=100, quantity=3, product_gst_applicable="N",
+                                              gst_percentage=18, configured_amount=9), Decimal("0.00"))
+
+    def test_missing_flag_is_disabled_not_enabled(self):
+        self.assertEqual(calculate_gst_amount(unit_price=100, quantity=1, product_gst_applicable=None,
+                                              gst_percentage=18), Decimal("0.00"))
+
+    def test_disabled_variant_is_zero_even_with_stale_amount(self):
+        self.assertEqual(calculate_gst_amount(unit_price=20, quantity=2, product_gst_applicable="Y", variant_gst="N",
+                                              is_variant=True, gst_percentage=None, configured_amount=12), Decimal("0.00"))
+
+    def test_enabled_uses_saved_percentage_not_a_hardcoded_rate(self):
+        for pct in (5, 12, 18, 28):
+            got = calculate_gst_amount(unit_price=100, quantity=1, product_gst_applicable="Y", gst_percentage=pct)
+            self.assertEqual(got, Decimal(pct).quantize(Decimal("0.01")))
+
+    def test_enabled_without_configuration_does_not_invent_a_rate(self):
+        self.assertEqual(calculate_gst_amount(unit_price=100, quantity=2, product_gst_applicable="Y"), Decimal("0.00"))
+
+    def test_invalid_saved_configuration_fails_safe_to_zero(self):
+        for pct, amount in ((-1, None), (101, None), (None, -5), ("abc", None)):
+            self.assertEqual(effective_gst_settings(product_gst_applicable="Y", gst_percentage=pct,
+                                                    configured_amount=amount)["applicable"],
+                             "N" if pct in (-1, 101) or amount == -5 else "Y")
+
+    def test_admin_validation_gives_clear_errors(self):
+        self.assertIn("between 0 and 100", validate_gst_configuration(percentage=150))
+        self.assertIn("cannot be negative", validate_gst_configuration(amount=-1))
+        self.assertIn("finite", validate_gst_configuration(percentage="abc"))
+        self.assertIsNone(validate_gst_configuration(percentage=18, amount=0))
+
+    def test_percentage_and_amount_are_never_added_together(self):
+        got = calculate_gst_amount(unit_price=100, quantity=1, product_gst_applicable="Y",
+                                   gst_percentage=18, configured_amount=50)
+        self.assertEqual(got, Decimal("18.00"))
+
+
+class CartCheckoutFlowTests(SimpleTestCase):
+    def _toggle(self, key, value):
+        previous = PRODUCTS[15][key]
+        PRODUCTS[15][key] = value
+        self.addCleanup(PRODUCTS[15].__setitem__, key, previous)
+
+    def test_enabled_to_disabled_then_back_recalculates_current_cart(self):
+        db = FakeCartDb()
+        with cart_env(db):
+            add(15, (0, 2))
+            enabled = _summary(fetch_cart())["GST"]
+            self._toggle("gst_applicable", "N")
+            disabled = _summary(fetch_cart())
+            checkout = body_of(views_commerce.checkout(rf.get("/api/checkout", **BEARER)))["checkout_data"]["cart_summary"]
+            self._toggle("gst_applicable", "Y")
+            self._toggle("gst_percentage", 5)
+            re_enabled = _summary(fetch_cart())["GST"]
+        self.assertEqual(enabled, 36.0)
+        self.assertEqual(disabled["GST"], 0.0)
+        self.assertEqual(disabled["order_total_before_credit"], disabled["original_price"])
+        self.assertEqual(checkout["gst_amount"], 0.0)
+        self.assertEqual(re_enabled, 10.0)
+
+    def test_cart_and_checkout_agree_on_gst(self):
+        db = FakeCartDb()
+        with cart_env(db):
+            add(15, (0, 3))
+            add(13, (102, 2))
+            cart_gst = _summary(fetch_cart())["GST"]
+            checkout_gst = body_of(views_commerce.checkout(rf.get("/api/checkout", **BEARER)))["checkout_data"]["cart_summary"]["gst_amount"]
+        self.assertEqual(cart_gst, checkout_gst)
+
+    def test_client_supplied_gst_values_cannot_override_backend(self):
+        db = FakeCartDb()
+        self._toggle("gst_applicable", "N")
+        forged = "?gst=999&GST=999&gst_amount=999&gst_percentage=28&total=1&payable_amount=1"
+        with cart_env(db):
+            add(15, (0, 2))
+            cart = body_of(views_commerce.cart_api_test(rf.get("/api/cart" + forged, **BEARER)))
+            checkout = body_of(views_commerce.checkout(rf.get("/api/checkout" + forged, **BEARER)))["checkout_data"]["cart_summary"]
+        self.assertEqual(_summary(cart)["GST"], 0.0)
+        self.assertEqual(_summary(cart)["payable_amount"], 200.0)
+        self.assertEqual(checkout["gst_amount"], 0.0)
+
+    def test_gst_is_added_once_and_list_price_is_not_taxed_twice(self):
+        db = FakeCartDb()
+        with cart_env(db):
+            add(15, (0, 1))
+            s = _summary(fetch_cart())
+        self.assertEqual(s["items_subtotal"], 100.0)
+        self.assertEqual(s["GST"], 18.0)
+        self.assertEqual(s["order_total_before_credit"], 118.0)

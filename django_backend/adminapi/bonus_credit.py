@@ -1,0 +1,81 @@
+"""Order-confirmation credit for the legacy StokIt tables.
+
+All rules (monthly allowance from the offer, current-calendar-month usage, no carry-forward, zero credit
+without an eligible allocation, atomic locking) live in ``legacydb.monthly_credit``; this module only adapts
+that service to the admin order endpoints, keeping the original function names and result keys.
+"""
+from datetime import datetime
+
+from django.db import connection
+
+from legacydb import monthly_credit as mc
+
+CENT = mc.CENT
+ZERO = mc.ZERO
+_money = mc.money
+_monthly_bonus = mc.monthly_credit_release
+
+
+def preview_customer_bonus(email, purchase_amount, today=None, order_id=None):
+    """Read-only estimate; never writes or reserves credit."""
+    today = today or mc.local_today()
+    purchase = max(ZERO, mc.money(purchase_amount))  # preview is display-only; commits validate strictly
+    with connection.cursor() as cursor:
+        user_id = mc.user_id_for_email(cursor, email) if email else None
+        state, terms = (mc.no_allocation_state(today), None) if user_id is None else mc.load_state(cursor, user_id, today)
+        if terms is None:
+            return {"monthly_bonus": ZERO, "monthly_credit_release": ZERO, "carried_forward": ZERO, "available_bonus": ZERO,
+                    "bonus_applied": ZERO, "amount_payable": purchase, "remaining_bonus": ZERO,
+                    "credit_status": "no_active_allocation"}
+        already = None
+        if order_id is not None:
+            cursor.execute(
+                "SELECT amount FROM advance_pay_transactions WHERE reference_type=%s AND reference_id=%s "
+                "AND UPPER(transaction_type)='CREDIT_USED' LIMIT 1", [mc.ORDER_REFERENCE_TYPE, order_id])
+            saved = cursor.fetchone()
+            if saved:
+                already = mc.money(saved[0])
+    if already is not None:
+        data = mc.result_dict(state, purchase, already, duplicate=False, remaining_after=state.remaining_this_month)
+        data["available_bonus"] = state.remaining_this_month
+        data["credit_status"] = "already_applied"
+        return data
+    applied = min(state.remaining_this_month, purchase)
+    data = mc.result_dict(state, purchase, applied, duplicate=False, remaining_after=max(ZERO, state.remaining_this_month - applied))
+    data["credit_status"] = state.code
+    data["months_released_or_eligible"] = mc.months_released_to_date(terms, today)
+    return data
+
+
+def _customer_who_placed(cursor, order_id):
+    """users.id recorded in the ledger when the order was placed (locked), or None for orders without a ledger row.
+
+    Using the recorded customer id means confirmation never depends on the order's email still matching, and can never
+    resolve to a different customer who now has the same email.
+    """
+    cursor.execute(
+        "SELECT user_id FROM advance_pay_transactions WHERE reference_type=%s AND reference_id=%s "
+        "AND UPPER(transaction_type)='CREDIT_USED' LIMIT 1", [mc.ORDER_REFERENCE_TYPE, order_id])
+    row = cursor.fetchone()
+    if not row:
+        return None
+    cursor.execute("SELECT id FROM users WHERE id=%s FOR UPDATE", [row[0]])
+    locked = cursor.fetchone()
+    return locked[0] if locked else None
+
+
+def release_and_deduct_for_confirmed_order(cursor, order_id, email, purchase_amount, today=None, allow_new=True):
+    """Call inside the order-status transaction after the order row is locked and before confirmation commits.
+
+    Locks the customer and allocation rows, recomputes the current calendar month, applies at most this month's
+    remaining credit, and is idempotent per (allocation, ORDER_BONUS, order_id). Returns None when the customer
+    has no ACTIVE allocation. No monthly "release" rows are written any more: the allowance is derived from the
+    offer, so repeated confirmations can never release extra credit.
+    """
+    now = datetime.combine(today, mc.local_now().time()) if today else None
+    user_id = _customer_who_placed(cursor, order_id)
+    if user_id is None:  # legacy order without a placement row: fall back to the order's email
+        user_id = mc.user_id_for_email(cursor, email, lock=True) if email else None
+    if user_id is None:
+        return None
+    return mc.commit_order_credit(cursor, order_id, user_id, purchase_amount, now=now, allow_new=allow_new)

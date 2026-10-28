@@ -1,0 +1,156 @@
+"""GST order-snapshot tests: new orders freeze GST; existing orders are read from the snapshot, never from today's settings.
+
+Evidence level: UNIT / REGRESSION with the SQL helper layer patched. The snapshot columns are not applied to any
+database yet (migration awaiting approval), so `snapshot_available` is patched to simulate both deployment states.
+"""
+from contextlib import ExitStack, nullcontext
+from decimal import Decimal
+from unittest import mock
+
+from django.test import RequestFactory, SimpleTestCase, override_settings
+
+from legacy_api import views_finance, views_orders
+from legacy_api.tests_auth import BEARER, authed, body_of, post
+from legacydb import order_gst_snapshot as snap
+from legacydb.order_gst_snapshot import SOURCE_LEGACY, SOURCE_PARTIAL, SOURCE_PRE_MIGRATION, SOURCE_SNAPSHOT
+
+rf = RequestFactory()
+
+
+def snapshot_columns(present):
+    stack = ExitStack()
+    stack.enter_context(mock.patch.object(snap, "snapshot_available", return_value=present))
+    stack.enter_context(mock.patch.object(views_orders, "snapshot_available", return_value=present))
+    return stack
+
+
+def must_not_recalc(_row):
+    raise AssertionError("current product/variant settings must not be consulted for a snapshot-era order")
+
+
+class SnapshotRuleTests(SimpleTestCase):
+    def test_snapshot_era_order_uses_stored_amounts_and_never_recalculates(self):
+        with snapshot_columns(True):
+            total, source = snap.order_gst([{"snap_gst_amount": Decimal("18.00")}, {"snap_gst_amount": Decimal("0.00")}], must_not_recalc)
+        self.assertEqual((total, source), (Decimal("18.00"), SOURCE_SNAPSHOT))
+
+    def test_legacy_orders_are_not_invented_or_recomputed(self):
+        with snapshot_columns(True):
+            total, source = snap.order_gst([{"snap_gst_amount": None}], must_not_recalc)
+        self.assertEqual((total, source), (Decimal("0.00"), SOURCE_LEGACY))
+
+    def test_partial_snapshot_is_reported_explicitly(self):
+        with snapshot_columns(True):
+            total, source = snap.order_gst([{"snap_gst_amount": Decimal("5.00")}, {"snap_gst_amount": None}], must_not_recalc)
+        self.assertEqual((total, source), (Decimal("5.00"), SOURCE_PARTIAL))
+
+    def test_before_migration_behaviour_is_unchanged(self):
+        with snapshot_columns(False):
+            total, source = snap.order_gst([{"x": 1}], lambda r: Decimal("7.00"))
+        self.assertEqual((total, source), (Decimal("7.00"), SOURCE_PRE_MIGRATION))
+
+    def test_line_snapshot_comes_from_the_central_rules(self):
+        enabled = snap.line_snapshot(unit_price=100, quantity=2, product_gst_applicable="Y", gst_percentage=18, configured_amount=1)
+        self.assertEqual((enabled["gst_applicable"], enabled["gst_percentage"], enabled["gst_amount"]),
+                         ("Y", Decimal("18"), Decimal("36.00")))
+        disabled = snap.line_snapshot(unit_price=100, quantity=2, product_gst_applicable="N", gst_percentage=18, configured_amount=9)
+        self.assertEqual((disabled["gst_applicable"], disabled["gst_percentage"], disabled["gst_unit_amount"], disabled["gst_amount"]),
+                         ("N", Decimal("0.00"), Decimal("0.00"), Decimal("0.00")))
+
+
+class NewOrderSnapshotTests(SimpleTestCase):
+    user = {"fullname": "T", "phone": "1", "address": "a", "email": "t@example.invalid",
+            "delivery_charges": Decimal("0.00"), "vip_discount": "N", "vip_percentage": Decimal("0")}
+    item = {"product_id": 15, "variant_id": 0, "qty": 2, "product_name": "Pct", "has_disc": 0, "discount_percent": 0,
+            "discount_value": 0, "product_discount": 0, "product_gst_applicable": "Y", "product_gst_percentage": Decimal("18"),
+            "gst_price": Decimal("1.00"), "variant_gst": "N", "variant_name": "", "price": Decimal("100.00"), "stock_qty": 1}
+
+    def place(self, item, present, forged=None):
+        request = rf.post("/api/order_post", data=forged or {}, **BEARER)
+        with authed(), snapshot_columns(present), override_settings(STOKIT_MIN_ORDER_VALUE=Decimal("0.00")), \
+                mock.patch.object(views_orders.transaction, "atomic", return_value=nullcontext()), \
+                mock.patch.object(views_orders, "fetchone", return_value=self.user), \
+                mock.patch.object(views_orders, "fetchall", return_value=[item]), \
+                mock.patch.object(views_orders, "_insert_checkout_with_unique_id", return_value=500), \
+                mock.patch.object(views_orders, "execute") as execute:
+            response = views_orders.order_post(request)
+        inserts = [c for c in execute.call_args_list if "INSERT INTO zg_order_items" in c.args[0]]
+        return response, inserts
+
+    def test_new_order_stores_the_calculated_snapshot_once_columns_exist(self):
+        response, inserts = self.place(self.item, True)
+        self.assertEqual(response.status_code, 200)
+        sql, params = inserts[0].args
+        self.assertIn("gst_amount", sql)
+        self.assertIn("gst_snapshot_at", sql)
+        self.assertEqual(sql.count("%s"), len(params))
+        self.assertEqual(params[-4:], ["Y", Decimal("18"), Decimal("0.00"), Decimal("36.00")])
+
+    def test_disabled_gst_is_stored_as_zero_despite_stale_amounts(self):
+        response, inserts = self.place({**self.item, "product_gst_applicable": "N"}, True)
+        self.assertEqual(inserts[0].args[1][-4:], ["N", Decimal("0.00"), Decimal("0.00"), Decimal("0.00")])
+
+    def test_forged_client_gst_cannot_reach_the_snapshot(self):
+        _, inserts = self.place({**self.item, "product_gst_applicable": "N"}, True,
+                                forged={"gst_amount": "999", "gst": "999", "gst_percentage": "28"})
+        self.assertEqual(inserts[0].args[1][-1], Decimal("0.00"))
+
+    def test_before_migration_the_insert_is_exactly_the_legacy_statement(self):
+        response, inserts = self.place(self.item, False)
+        self.assertEqual(response.status_code, 200)
+        sql, params = inserts[0].args
+        self.assertNotIn("gst_", sql)
+        self.assertEqual(len(params), 9)
+
+
+class HistoricalDisplayTests(SimpleTestCase):
+    def row(self, **extra):
+        base = {"order_id": 9, "order_date": "2026-10-01", "status": "Placed", "total_amount": Decimal("200.00"),
+                "full_name": "A", "phone": "1", "address": "a", "city": "c", "state": "s", "postal_code": "1",
+                "country": "IN", "payment_method": "online", "shipping_charge": 0, "cod_charge": 0, "item_id": 1,
+                "product_id": 15, "variant_id": 0, "product_name": "Pct", "variant_name": "", "quantity": 2,
+                "price": Decimal("100.00"), "discount": Decimal("0"), "total_price": Decimal("200.00"),
+                "snap_gst_amount": Decimal("36.00"), "product_gst_applicable": "N", "product_gst_percentage": Decimal("0"),
+                "configured_gst_amount": Decimal("0"), "variant_gst": "N", "image_path": None}
+        base.update(extra)
+        return base
+
+    def details(self, rows, present=True):
+        def one(sql, params=()):
+            if "FROM users" in sql:
+                return {"email": "alice@example.invalid", "gst_percentage": 0, "delivery_charges": 0,
+                        "vip_discount": None, "vip_percentage": 0}
+            return None
+        request = post("/api/order_details", {"order_id": 9}, **BEARER)
+        with authed(), snapshot_columns(present), mock.patch.object(views_orders, "fetchone", side_effect=one), \
+                mock.patch.object(views_orders, "fetchall", return_value=rows):
+            return body_of(views_orders.order_details(request))
+
+    def test_old_order_gst_ignores_current_product_settings(self):
+        # Today the product is GST-disabled, but the order was placed with 36.00 GST.
+        pricing = self.details([self.row()])["pricing"]
+        self.assertEqual((pricing["gst_amount"], pricing["gst_source"]), (36.0, "snapshot"))
+
+    def test_changing_product_gst_configuration_does_not_change_old_order(self):
+        before = self.details([self.row()])["pricing"]
+        after = self.details([self.row(product_gst_applicable="Y", product_gst_percentage=Decimal("28"),
+                                       configured_gst_amount=Decimal("99"))])["pricing"]
+        self.assertEqual((before["gst_amount"], before["total_with_gst"]), (after["gst_amount"], after["total_with_gst"]))
+        self.assertEqual(self.details([self.row()])["order"]["total_amount"], 200.0)
+
+    def test_legacy_order_is_flagged_not_recomputed_from_current_settings(self):
+        pricing = self.details([self.row(snap_gst_amount=None, product_gst_applicable="Y",
+                                         product_gst_percentage=Decimal("18"))])["pricing"]
+        self.assertEqual((pricing["gst_amount"], pricing["gst_source"]), (0.0, "legacy_unrecorded"))
+
+    def test_flutter_pricing_keys_remain_present(self):
+        pricing = self.details([self.row()])["pricing"]
+        for key in ("gst_percentage", "gst_amount", "total_with_gst", "delivery_charge", "grand_total", "subtotal"):
+            self.assertIn(key, pricing)
+
+    def test_statement_gst_reads_the_snapshot(self):
+        with snapshot_columns(True), mock.patch.object(views_finance, "fetchall", return_value=[
+                {"product_id": 15, "variant_id": 0, "quantity": 2, "price": Decimal("100"), "snap_gst_amount": Decimal("36.00"),
+                 "product_gst_applicable": "N", "product_gst_percentage": None, "configured_amount": 0, "variant_gst": "N"}]):
+            total, source = views_finance._order_gst(9)
+        self.assertEqual((total, source), (Decimal("36.00"), SOURCE_SNAPSHOT))

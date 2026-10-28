@@ -1,0 +1,181 @@
+from datetime import date, datetime
+
+from django.db import connection
+
+from legacydb import monthly_credit as mc
+
+from .common import legacy_image_url, fetchall, fetchone, jr, json_body, as_dict, legacy_view
+
+
+CREDIT_ORDER_QUERY = (
+    "SELECT o.order_id,DATE(o.order_date) AS order_date,o.order_date AS order_datetime,o.status,"
+    "o.total_amount,o.payment_method,o.shipping_charge,o.cod_charge,o.full_name,"
+    "COALESCE(SUM(CASE WHEN oi.discount>0 THEN oi.total_price ELSE 0 END),0) AS discounted_subtotal,"
+    "COALESCE(SUM(CASE WHEN oi.discount<=0 THEN oi.total_price ELSE 0 END),0) AS non_discounted_subtotal "
+    "FROM zg_checkout o LEFT JOIN zg_order_items oi ON o.order_id=oi.order_id "
+    "WHERE o.email=%s GROUP BY o.order_id,DATE(o.order_date),o.order_date,o.status,o.total_amount,"
+    "o.payment_method,o.shipping_charge,o.cod_charge,o.full_name "
+    "ORDER BY o.order_date ASC,o.order_id ASC"
+)
+
+# Legacy order_details.php order-total constant (same value as adminapi.order_pages.FIN["vip_discount_percent"]).
+# It is an order pricing rule, not a credit rule, and is intentionally unchanged by the credit fix.
+VIP_DISCOUNT_RATE = 0.5
+
+
+def _as_date(value):
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return None
+
+
+def _credit_release_report(user, rows, credit=None):
+    """Per-order statement. ``credit`` is the context from ``current_credit_context`` (None = no credit).
+
+    Monthly credit comes only from the customer's allocation and the ledger; nothing carries between months
+    (the legacy carried/closing columns are kept in the payload but are always 0.0).
+    """
+    credit = credit or {}
+    terms, state = credit.get('terms'), credit.get('state')
+    applied_by_order = credit.get('applied', {})
+    today = credit.get('today') or mc.local_today()
+    usable = terms is not None and state is not None and state.code != 'invalid'
+    billed = float(user.get('gst_percentage') or 0)
+    gst_pct = 18 * billed / 100
+    delivery = float(user.get('delivery_charges') or 0)
+    used_by_month, out = {}, []
+    for index, row in enumerate(rows, start=1):
+        discounted = float(row['discounted_subtotal'] or 0)
+        non_discounted = float(row['non_discounted_subtotal'] or 0)
+        cart_discount = non_discounted * .1
+        subtotal = discounted + non_discounted - cart_discount
+        if discounted + non_discounted <= 0 and float(row['total_amount'] or 0) > 0:
+            subtotal = float(row['total_amount'])
+        gst = subtotal * gst_pct / 100
+        vip = subtotal * VIP_DISCOUNT_RATE
+        # Purchase value is calculated before applying this month's credit.
+        grand = max(0.0, subtotal + gst + delivery - vip)
+        order_day = _as_date(row.get('order_date')) or today
+        applied, applied_at = applied_by_order.get(int(row['order_id']), (mc.ZERO, None))
+        credit_day = (_as_date(applied_at) if applied > mc.ZERO and applied_at else None) or order_day
+        allowance = mc.month_allowance(terms, credit_day) if usable else mc.ZERO
+        key = (credit_day.year, credit_day.month)
+        used_before = used_by_month.get(key, mc.ZERO)
+        used_by_month[key] = used_before + applied
+        available = float(max(mc.ZERO, allowance - used_before))
+        remaining_after = float(max(mc.ZERO, allowance - used_by_month[key]))
+        excess = available - grand
+        remarks = str(row['status'] or '').capitalize()
+        if excess < 0:
+            remarks += (' | ' if remarks else '') + 'Balance Due'
+        elif excess > 0:
+            remarks += (' | ' if remarks else '') + 'Credit Available'
+        out.append({
+            'sl_no': index, 'date': row['order_date'], 'date_time': row['order_datetime'],
+            'particulars': 'Order #' + str(row['order_id']) + (' (' + str(row['payment_method']).capitalize() + ')' if row['payment_method'] else ''),
+            'ref_order_id': int(row['order_id']), 'monthly_credit_released': float(allowance),
+            'carried_forward_from_previous_month': 0.0, 'total_available_credit': round(available, 2),
+            'purchase_value': round(grand, 2), 'excess_amount_paid_by_customer': round(excess, 2),
+            'closing_balance_carried_forward': 0.0, 'remarks': remarks,
+            'order_status': row['status'] or 'Unknown', 'items_subtotal_raw': round(discounted + non_discounted, 2),
+            'discounted_items_subtotal': round(discounted, 2), 'non_discounted_items_subtotal': round(non_discounted, 2),
+            'cart_discount': round(cart_discount, 2), 'subtotal': round(subtotal, 2), 'gst_percentage': round(gst_pct, 2),
+            'gst_amount': round(gst, 2), 'total_with_gst': round(subtotal + gst, 2), 'delivery_charge': round(delivery, 2),
+            'credit_release': float(allowance), 'credit_applied': float(applied),
+            'monthly_credit_remaining_after_order': round(remaining_after, 2),
+            'vip_discount_percentage': VIP_DISCOUNT_RATE * 100, 'vip_discount': round(vip, 2), 'grand_total': round(grand, 2),
+        })
+    monthly_full = state.monthly_credit_release if usable else mc.ZERO
+    released_months = mc.months_released_to_date(terms, today) if usable else 0
+    summary = {
+        'total_orders': len(out), 'total_credit_released': round(float(monthly_full * released_months), 2),
+        'total_credit_applied': round(sum(row['credit_applied'] for row in out), 2),
+        'total_purchase_value': round(sum(row['purchase_value'] for row in out), 2),
+        'total_excess_amount_paid': round(sum(row['excess_amount_paid_by_customer'] for row in out), 2),
+        'final_closing_balance': 0.0,
+    }
+    return out, summary
+
+
+def current_credit_context(user):
+    """Read-only credit context (state, allocation terms, committed order deductions) for a customer."""
+    with connection.cursor() as cursor:
+        return mc.customer_credit_context(cursor, str(user.get('email') or '').strip())
+
+
+def current_available_credit(user):
+    """Return (monthly credit release, carried-forward, spendable credit) for cart pricing.
+
+    Carried-forward is always 0.0: unused monthly credit expires. Spendable credit is this calendar month's
+    remaining credit; customers without an eligible allocation get zero for all three values.
+    """
+    state = current_credit_context(user)['state']
+    monthly = state.monthly_credit_release if state.eligible else mc.ZERO
+    return float(monthly), 0.0, float(state.remaining_this_month)
+
+@legacy_view()
+def advance_pay(request):
+    if request.method != 'POST':
+        return jr({'status': False, 'message': 'Only POST method allowed'}, 405)
+    data = as_dict(json_body(request))
+    state = str(data.get('status', 'ACTIVE')).upper().strip()
+    try:
+        limit = max(1, min(100, int(data.get('limit', 100) or 100)))
+        offset = max(0, int(data.get('offset', 0) or 0))
+    except (ValueError, TypeError):
+        return jr({'status': False, 'message': 'Invalid pagination'}, 400)
+    search = str(data.get('search', '')).strip()
+    where, params = [], []
+    if state != 'ALL':
+        where.append('o.status=%s'); params.append(state)
+    if search:
+        where.append('o.offer_name ILIKE %s'); params.append('%' + search + '%')
+    clause = (' WHERE ' + ' AND '.join(where)) if where else ''
+    rows = fetchall('SELECT o.id,o.offer_name,o.payment_amount,o.bonus_percentage,o.duration_months,o.total_credit,o.status,o.image_path,o.created_at,o.updated_at,CASE WHEN EXISTS (SELECT 1 FROM advance_pay_allocations a WHERE a.offer_id=o.id) THEN \'Y\' ELSE \'N\' END AS assigned FROM advance_pay_offers o' + clause + ' ORDER BY o.created_at DESC LIMIT %s OFFSET %s', params + [limit, offset])
+    total = fetchone('SELECT COUNT(*) AS total FROM advance_pay_offers o' + clause, params) or {'total': 0}
+    offers = [{'id': int(r['id']), 'assigned': r['assigned'], 'offer_name': r['offer_name'],
+        'payment_amount': float(r['payment_amount']), 'bonus_percentage': float(r['bonus_percentage']),
+        'duration_months': int(r['duration_months']), 'total_credit': float(r['total_credit']),
+        'status': r['status'], 'imgUrl': legacy_image_url(r['image_path'], request, ''), 'created_at': r['created_at'],
+        'updated_at': r['updated_at'], 'Whatsapp': 'https://wa.me/919745227859?text=Hey'} for r in rows]
+    return jr({'status': True, 'message': 'Offers retrieved successfully.', 'data': {'offers': offers,
+        'pagination': {'total': int(total['total']), 'limit': limit, 'offset': offset, 'returned': len(offers)}}})
+
+
+@legacy_view()
+def credit_release(request):
+    username = request.legacy_user['username']
+    user = fetchone('SELECT email,gst_percentage,delivery_charges FROM users WHERE username=%s LIMIT 1', [username])
+    if not user:
+        return jr({'status': 'error', 'message': 'User not found'}, 404)
+    rows = fetchall(CREDIT_ORDER_QUERY, [user['email']])
+    context = current_credit_context(user)
+    out, summary = _credit_release_report(user, rows, context)
+    state = context['state']
+    has_allocation = state.allocation_id is not None
+    monthly_now = state.monthly_credit_release if state.eligible else mc.ZERO
+    return jr({'status': 'success', 'user': {'username': username, 'email': user['email'],
+        # Legacy field names are kept for the Flutter client; the values now come from the customer's real allocation.
+        'total_advance_recived': state.payment_amount if has_allocation else mc.ZERO,
+        'duration': state.duration_months if has_allocation else 0,
+        'current_month_cr': monthly_now,
+        'payment_amount': state.payment_amount, 'bonus_percentage': state.bonus_percentage,
+        'duration_months': state.duration_months, 'total_credit': state.total_credit,
+        'monthly_credit_release': monthly_now, 'monthly_used_credit': state.used_this_month,
+        'monthly_remaining_credit': state.remaining_this_month, 'allocation_start_date': state.start_date,
+        'allocation_end_date': state.end_date, 'allocation_status': state.allocation_status,
+        'credit_status': state.code, 'message': state.message, 'month': state.month},
+        'columns': ['sl_no','date','particulars','ref_order_id','monthly_credit_released','carried_forward_from_previous_month','total_available_credit','purchase_value','excess_amount_paid_by_customer','closing_balance_carried_forward','remarks'],
+        'summary': summary, 'data': out})
+
+
+@legacy_view(auth=False)
+def contactus(request):
+    if request.method != 'GET':
+        return jr({'error': 'Method not allowed'}, 405)
+    return jr({'contact': {'whatsapp': '+919745227859', 'phone': '+919745227859', 'email': 'mail@teleber.tech'}})

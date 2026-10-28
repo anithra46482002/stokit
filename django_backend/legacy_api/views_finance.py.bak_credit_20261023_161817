@@ -1,0 +1,128 @@
+from django.conf import settings
+
+from .common import base_url, fetchall, fetchone, jr, json_body, as_dict, legacy_view
+
+
+CREDIT_ORDER_QUERY = (
+    "SELECT o.order_id,DATE(o.order_date) AS order_date,o.order_date AS order_datetime,o.status,"
+    "o.total_amount,o.payment_method,o.shipping_charge,o.cod_charge,o.full_name,"
+    "COALESCE(SUM(CASE WHEN oi.discount>0 THEN oi.total_price ELSE 0 END),0) AS discounted_subtotal,"
+    "COALESCE(SUM(CASE WHEN oi.discount<=0 THEN oi.total_price ELSE 0 END),0) AS non_discounted_subtotal "
+    "FROM zg_checkout o LEFT JOIN zg_order_items oi ON o.order_id=oi.order_id "
+    "WHERE o.email=%s GROUP BY o.order_id,DATE(o.order_date),o.order_date,o.status,o.total_amount,"
+    "o.payment_method,o.shipping_charge,o.cod_charge,o.full_name "
+    "ORDER BY o.order_date ASC,o.order_id ASC"
+)
+
+
+def _credit_release_report(user, rows):
+    monthly_credit = float(settings.STOKIT_MONTHLY_CREDIT_RELEASE)
+    billed = float(user.get('gst_percentage') or 0)
+    gst_pct = 18 * billed / 100
+    delivery = float(user.get('delivery_charges') or 0)
+    carried, out = 0.0, []
+    for index, row in enumerate(rows, start=1):
+        discounted = float(row['discounted_subtotal'] or 0)
+        non_discounted = float(row['non_discounted_subtotal'] or 0)
+        cart_discount = non_discounted * .1
+        subtotal = discounted + non_discounted - cart_discount
+        if discounted + non_discounted <= 0 and float(row['total_amount'] or 0) > 0:
+            subtotal = float(row['total_amount'])
+        gst = subtotal * gst_pct / 100
+        vip = subtotal * .5
+        # Purchase value is calculated before applying this row's monthly credit.
+        grand = max(0.0, subtotal + gst + delivery - vip)
+        available = carried + monthly_credit
+        excess = available - grand
+        remarks = str(row['status'] or '').capitalize()
+        if excess < 0:
+            remarks += (' | ' if remarks else '') + 'Balance Due'
+        elif excess > 0:
+            remarks += (' | ' if remarks else '') + 'Credit Available'
+        out.append({
+            'sl_no': index, 'date': row['order_date'], 'date_time': row['order_datetime'],
+            'particulars': 'Order #' + str(row['order_id']) + (' (' + str(row['payment_method']).capitalize() + ')' if row['payment_method'] else ''),
+            'ref_order_id': int(row['order_id']), 'monthly_credit_released': monthly_credit,
+            'carried_forward_from_previous_month': round(carried, 2), 'total_available_credit': round(available, 2),
+            'purchase_value': round(grand, 2), 'excess_amount_paid_by_customer': round(excess, 2),
+            'closing_balance_carried_forward': round(max(0.0, excess), 2), 'remarks': remarks,
+            'order_status': row['status'] or 'Unknown', 'items_subtotal_raw': round(discounted + non_discounted, 2),
+            'discounted_items_subtotal': round(discounted, 2), 'non_discounted_items_subtotal': round(non_discounted, 2),
+            'cart_discount': round(cart_discount, 2), 'subtotal': round(subtotal, 2), 'gst_percentage': round(gst_pct, 2),
+            'gst_amount': round(gst, 2), 'total_with_gst': round(subtotal + gst, 2), 'delivery_charge': round(delivery, 2),
+            'credit_release': monthly_credit, 'vip_discount_percentage': 50.0, 'vip_discount': round(vip, 2), 'grand_total': round(grand, 2),
+        })
+        carried = max(0.0, excess)
+    summary = {
+        'total_orders': len(out), 'total_credit_released': round(len(out) * monthly_credit, 2),
+        'total_purchase_value': round(sum(row['purchase_value'] for row in out), 2),
+        'total_excess_amount_paid': round(sum(row['excess_amount_paid_by_customer'] for row in out), 2),
+        'final_closing_balance': round(carried, 2),
+    }
+    return out, summary
+
+
+def current_available_credit(user):
+    """Return monthly release, historical carry-forward, and total available credit for cart pricing."""
+    monthly_credit = float(settings.STOKIT_MONTHLY_CREDIT_RELEASE)
+    email = str(user.get('email') or '').strip()
+    rows = fetchall(CREDIT_ORDER_QUERY, [email]) if email else []
+    _, summary = _credit_release_report(user, rows)
+    carried = max(0.0, float(summary['final_closing_balance']))
+    return monthly_credit, carried, monthly_credit + carried
+
+
+@legacy_view()
+def advance_pay(request):
+    if request.method != 'POST':
+        return jr({'status': False, 'message': 'Only POST method allowed'}, 405)
+    data = as_dict(json_body(request))
+    state = str(data.get('status', 'ACTIVE')).upper().strip()
+    try:
+        limit = max(1, min(100, int(data.get('limit', 100) or 100)))
+        offset = max(0, int(data.get('offset', 0) or 0))
+    except (ValueError, TypeError):
+        return jr({'status': False, 'message': 'Invalid pagination'}, 400)
+    search = str(data.get('search', '')).strip()
+    where, params = [], []
+    if state != 'ALL':
+        where.append('o.status=%s'); params.append(state)
+    if search:
+        where.append('o.offer_name ILIKE %s'); params.append('%' + search + '%')
+    clause = (' WHERE ' + ' AND '.join(where)) if where else ''
+    rows = fetchall('SELECT o.id,o.offer_name,o.payment_amount,o.bonus_percentage,o.duration_months,o.total_credit,o.status,o.image_path,o.created_at,o.updated_at,CASE WHEN EXISTS (SELECT 1 FROM advance_pay_allocations a WHERE a.offer_id=o.id) THEN \'Y\' ELSE \'N\' END AS assigned FROM advance_pay_offers o' + clause + ' ORDER BY o.created_at DESC LIMIT %s OFFSET %s', params + [limit, offset])
+    total = fetchone('SELECT COUNT(*) AS total FROM advance_pay_offers o' + clause, params) or {'total': 0}
+    offers = [{'id': int(r['id']), 'assigned': r['assigned'], 'offer_name': r['offer_name'],
+        'payment_amount': float(r['payment_amount']), 'bonus_percentage': float(r['bonus_percentage']),
+        'duration_months': int(r['duration_months']), 'total_credit': float(r['total_credit']),
+        'status': r['status'], 'imgUrl': base_url() + (r['image_path'] or ''), 'created_at': r['created_at'],
+        'updated_at': r['updated_at'], 'Whatsapp': 'https://wa.me/919745227859?text=Hey'} for r in rows]
+    return jr({'status': True, 'message': 'Offers retrieved successfully.', 'data': {'offers': offers,
+        'pagination': {'total': int(total['total']), 'limit': limit, 'offset': offset, 'returned': len(offers)}}})
+
+
+@legacy_view()
+def credit_release(request):
+    username = request.legacy_user['username']
+    user = fetchone('SELECT email,gst_percentage,delivery_charges FROM users WHERE username=%s LIMIT 1', [username])
+    if not user:
+        return jr({'status': 'error', 'message': 'User not found'}, 404)
+    rows = fetchall(CREDIT_ORDER_QUERY, [user['email']])
+    out, summary = _credit_release_report(user, rows)
+    return jr({'status': 'success', 'user': {'username': username, 'email': user['email'],
+        'total_advance_recived': 450000, 'duration': 12, 'current_month_cr': 30000},
+        'columns': ['sl_no','date','particulars','ref_order_id','monthly_credit_released','carried_forward_from_previous_month','total_available_credit','purchase_value','excess_amount_paid_by_customer','closing_balance_carried_forward','remarks'],
+        'summary': summary, 'data': out})
+
+
+@legacy_view(auth=False)
+def contactus(request):
+    if request.method != 'GET':
+        return jr({'error': 'Method not allowed'}, 405)
+    return jr({'contact': {'whatsapp': '+919745227859', 'phone': '+919745227859', 'email': 'mail@teleber.tech'}})
+
+@legacy_view(auth=False)
+def contactus(request):
+    if request.method != 'GET':
+        return jr({'error': 'Method not allowed'}, 405)
+    return jr({'contact': {'whatsapp': '+919745227859', 'phone': '+919745227859', 'email': 'mail@teleber.tech'}})

@@ -1,0 +1,33 @@
+# PENDING - NOT APPLIED. Not in legacydb/migrations/, so `manage.py migrate` cannot pick it up.
+# To apply after approval: copy to legacydb/migrations/0005_order_item_gst_snapshot.py (drop the .pending suffix),
+# review `manage.py sqlmigrate legacydb 0005`, then `manage.py migrate legacydb`. See
+# docs/STOKIT_GST_SNAPSHOT_MIGRATION_PROPOSAL.md for ordering, impact, backfill and rollback.
+from django.db import migrations
+
+FORWARD = """
+ALTER TABLE zg_order_items
+    ADD COLUMN gst_applicable    char(1)       NULL,
+    ADD COLUMN gst_percentage    numeric(5,2)  NULL,
+    ADD COLUMN gst_unit_amount   numeric(10,2) NULL,
+    ADD COLUMN gst_amount        numeric(10,2) NULL,
+    ADD COLUMN gst_snapshot_at   timestamp     NULL;
+ALTER TABLE zg_order_items
+    ADD CONSTRAINT chk_zg_order_items_gst_applicable CHECK (gst_applicable IS NULL OR gst_applicable IN ('Y', 'N')),
+    ADD CONSTRAINT chk_zg_order_items_gst_amount_nonneg CHECK (gst_amount IS NULL OR gst_amount >= 0);
+"""
+
+REVERSE = """
+ALTER TABLE zg_order_items
+    DROP CONSTRAINT IF EXISTS chk_zg_order_items_gst_amount_nonneg,
+    DROP CONSTRAINT IF EXISTS chk_zg_order_items_gst_applicable,
+    DROP COLUMN IF EXISTS gst_snapshot_at,
+    DROP COLUMN IF EXISTS gst_amount,
+    DROP COLUMN IF EXISTS gst_unit_amount,
+    DROP COLUMN IF EXISTS gst_percentage,
+    DROP COLUMN IF EXISTS gst_applicable;
+"""
+
+
+class Migration(migrations.Migration):
+    dependencies = [("legacydb", "0004_variant_minimum_buying_count")]
+    operations = [migrations.RunSQL(FORWARD, reverse_sql=REVERSE)]

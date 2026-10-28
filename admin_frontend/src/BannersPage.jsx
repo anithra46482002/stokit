@@ -1,0 +1,179 @@
+import React from 'react';
+import { Plus, List, Pencil, Trash2, Info } from 'lucide-react';
+import api, { uploadImage } from './api';
+import { errorText, validateRewardImageFile } from './uiUtils';
+import { isUsableImageUrl } from './imageUrl';
+
+const PAGE_SIZE = 12;
+
+// Shows the banner image, or a clear fallback when the URL is missing/malformed or fails to load.
+function BannerImage({ url, id }) {
+  const [failedUrl, setFailedUrl] = React.useState('');
+  const failed = failedUrl === url;
+  if (!isUsableImageUrl(url)) return <div className="sk-banner-img sk-banner-empty">No image</div>;
+  if (failed) return <div className="sk-banner-img sk-banner-empty" role="img" aria-label={'Banner ' + id + ' image unavailable'}>Image unavailable</div>;
+  return <img className="sk-banner-img" src={url.trim()} alt={'Banner ' + id} loading="lazy" onError={() => setFailedUrl(url)} />;
+}
+
+function BannerCard({ banner, canWrite, onChanged, onError }) {
+  const [file, setFile] = React.useState(null);
+  const [fileKey, setFileKey] = React.useState(0);
+  const [busy, setBusy] = React.useState(false);
+  const [fileError, setFileError] = React.useState('');
+  const [previewUrl, setPreviewUrl] = React.useState('');
+  React.useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+
+  function chooseFile(nextFile) {
+    const validation = nextFile ? validateRewardImageFile(nextFile) : '';
+    setFileError(validation);
+    setFile(validation ? null : nextFile);
+    setPreviewUrl(!validation && nextFile ? URL.createObjectURL(nextFile) : "");
+  }
+
+  async function update() {
+    if (!file || busy || fileError) return;
+    setBusy(true);
+    try {
+      const uploaded = await uploadImage(file);
+      await api.patch('banners', { id: banner.id, image_path: uploaded.image_path });
+      setFile(null); setFileKey((k) => k + 1); setPreviewUrl(''); setFileError('');
+      await onChanged('Banner image updated.');
+    } catch (err) {
+      onError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (busy || !window.confirm('Delete banner ' + banner.id + '? This cannot be undone.')) return;
+    setBusy(true);
+    try {
+      await api.delete('banners', { params: { id: banner.id } });
+      await onChanged('Banner deleted.');
+    } catch (err) {
+      onError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <article className="sk-card sk-banner-card">
+      <span className="sk-label">Current Image</span>
+      <BannerImage url={banner.image_url} id={banner.id} />
+      {canWrite && (
+        <>
+          <label className="sk-label">Update Image <em>(optional)</em>
+            <input key={fileKey} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={(e) => chooseFile(e.target.files?.[0] || null)} />
+          </label>
+          <small>Leave empty to keep current image.</small>
+        </>
+      )}
+      {previewUrl && <><span className="sk-label">Selected replacement preview</span><img className="sk-banner-img" src={previewUrl} alt="Selected replacement banner" /></>}
+      {fileError && <small className="error" role="alert">{fileError}</small>}
+      {busy && <small role="status">Uploading and saving image...</small>}
+      <small>Banner ID: {banner.id}</small>
+      {canWrite && (
+        <div className="button-row">
+          <button className="sk-btn-edit" onClick={update} disabled={!file || busy || Boolean(fileError)} title={file ? '' : 'Choose a new image first'}><Pencil size={14} /> Update Image</button>
+          <button className="sk-btn-delete" onClick={remove} disabled={busy}><Trash2 size={14} /> Delete</button>
+        </div>
+      )}
+    </article>
+  );
+}
+
+export default function BannersPage({ canWrite }) {
+  const [file, setFile] = React.useState(null);
+  const [fileKey, setFileKey] = React.useState(0);
+  const [text, setText] = React.useState({ text_content: '', styled_text: '', text_content2: '' });
+  const [data, setData] = React.useState(null);
+  const [page, setPage] = React.useState(1);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [notice, setNotice] = React.useState('');
+  const [createPreview, setCreatePreview] = React.useState('');
+  React.useEffect(() => () => { if (createPreview) URL.revokeObjectURL(createPreview); }, [createPreview]);
+
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('banners', { params: { page, page_size: PAGE_SIZE } });
+      setData(response.data);
+      setError('');
+    } catch (err) {
+      setData(null);
+      setError(errorText(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+  // oxlint-disable-next-line react/set-state-in-effect
+  React.useEffect(() => { load(); }, [load]);
+
+  async function add(event) {
+    event.preventDefault();
+    if (saving) return;
+    if (!file) { setError('Banner image is required.'); return; }
+    setSaving(true); setError(''); setNotice('');
+    try {
+      const uploaded = await uploadImage(file);
+      await api.post('banners', Object.assign({ image_path: uploaded.image_path }, text));
+      setFile(null); setFileKey((k) => k + 1); setCreatePreview('');
+      setText({ text_content: '', styled_text: '', text_content2: '' });
+      setNotice('Banner added.');
+      await load();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function changed(message) { setError(''); setNotice(message); await load(); }
+
+  const rows = data?.results || [];
+  const pages = Math.max(1, Math.ceil((data?.count || 0) / PAGE_SIZE));
+  return (
+    <div className="sk-page">
+      {canWrite && (
+        <form className="sk-card sk-form" onSubmit={add}>
+          <h2><Plus size={20} /> Add New Banner</h2>
+          <p className="sk-muted">Only the image is required. All other fields are optional.</p>
+          <label><span>Banner Image <b className="sk-req">*</b></span>
+            <input key={fileKey} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={(e) => { const next = e.target.files?.[0] || null; const validation = next ? validateRewardImageFile(next) : ""; setError(validation); setFile(validation ? null : next); setCreatePreview(!validation && next ? URL.createObjectURL(next) : ""); }} required /></label>
+          {createPreview && <img className="sk-banner-img" src={createPreview} alt="New banner preview" />}
+          <small className="sk-warn"><Info size={14} /> Recommended size: 1920x1080px (16:9 ratio). Max 5 MB; JPG, PNG, GIF or WEBP.</small>
+          <details>
+            <summary>Optional text overlay</summary>
+            <div className="sk-form-grid">
+              <label><span>Text</span><input value={text.text_content} onChange={(e) => setText({ ...text, text_content: e.target.value })} /></label>
+              <label><span>Styled text</span><input value={text.styled_text} onChange={(e) => setText({ ...text, styled_text: e.target.value })} /></label>
+              <label><span>Secondary text</span><input value={text.text_content2} onChange={(e) => setText({ ...text, text_content2: e.target.value })} /></label>
+            </div>
+          </details>
+          <div className="button-row"><button className="sk-btn-primary" disabled={saving}><Plus size={16} /> {saving ? 'Adding...' : 'Add Banner'}</button></div>
+        </form>
+      )}
+      {error && <p className="error" role="alert">{error}</p>}
+      {notice && <p className="success" role="status">{notice}</p>}
+      <div className="sk-list-head"><h2><List size={20} /> Manage Banners</h2></div>
+      {loading && <p className="empty" role="status">Loading banners...</p>}
+      {!loading && !error && rows.length === 0 && <p className="empty">No banners yet.</p>}
+      <div className="sk-banner-grid">
+        {rows.map((banner) => <BannerCard key={banner.id} banner={banner} canWrite={canWrite} onChanged={changed} onError={setError} />)}
+      </div>
+      {data && data.count > 0 && (
+        <div className="pagination">
+          <span>{data.count} banners - Page {page} of {pages}</span>
+          <div className="button-row">
+            <button disabled={page <= 1 || loading} onClick={() => setPage(page - 1)}>Previous</button>
+            <button disabled={page >= pages || loading} onClick={() => setPage(page + 1)}>Next</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

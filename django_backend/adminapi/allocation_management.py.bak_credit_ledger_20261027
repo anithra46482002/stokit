@@ -1,0 +1,120 @@
+"""Admin allocation reporting over existing unmanaged legacy tables; no schema changes."""
+import calendar
+from datetime import date, datetime, time
+from decimal import Decimal, ROUND_HALF_UP
+from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
+from rest_framework.response import Response
+from legacydb import monthly_credit as mc
+from legacydb.models import AdvancePayAllocation, AdvancePayOffer, AdvancePayTransaction, LegacyUser
+from .operations import BaseAdminResource
+
+CENT = Decimal("0.01")
+ZERO = Decimal("0.00")
+def money(v): return Decimal(str(v or 0)).quantize(CENT, rounding=ROUND_HALF_UP)
+
+def reporting_period(params):
+    try:
+        as_of = date.fromisoformat(str(params["as_of_date"])) if params.get("as_of_date") else mc.local_today()
+        start = date.fromisoformat(str(params["month"]) + "-01") if params.get("month") else as_of.replace(day=1)
+    except ValueError:
+        raise ValueError("Use month=YYYY-MM or as_of_date=YYYY-MM-DD")
+    end = date(start.year + (start.month == 12), 1 if start.month == 12 else start.month + 1, 1)
+    return start, end, as_of
+
+def serialize(row, user, offer, start, end, as_of):
+    """One allocation row for the admin table. Every credit figure comes from legacydb.monthly_credit."""
+    tx = list(AdvancePayTransaction.objects.filter(allocation_id=row.id).order_by("created_at", "id"))
+    terms = mc.AllocationTerms(row.id, row.user_id, row.payment_amount, row.bonus_percentage, row.duration_months, row.start_date, row.end_date, row.status)
+    ref_day = as_of if start <= as_of < end else start
+    used_month = mc.sum_valid_usage(tx, datetime.combine(start, time.min), datetime.combine(end, time.min))
+    # Usage through the end of the reporting month decides the carry-forward (later months must not affect it);
+    # the lifetime figure shown in the table is still the all-time usage.
+    lifetime_used = mc.sum_valid_usage(tx)
+    state = mc.evaluate(terms, used_month, mc.sum_valid_usage(tx, None, datetime.combine(end, time.min)), ref_day)
+    valid = state.code != "invalid"
+    monthly = state.monthly_credit_release
+    released = mc.month_allowance(terms, ref_day) if valid else ZERO
+    future = max(0, state.duration_months - mc.months_released_to_date(terms, ref_day)) if valid and str(row.status).upper() == "ACTIVE" and ref_day <= row.end_date else 0
+    return {"id":row.id,"offer_id":row.offer_id,"offer_name":offer.offer_name if offer else "Unknown offer","user_id":row.user_id,"username":user.username if user else "","full_name":user.fullname if user else "","payment_amount":str(money(row.payment_amount)),"bonus_percentage":str(money(row.bonus_percentage)),"duration_months":row.duration_months,"monthly_credit_release":str(monthly),"monthly_bonus":str(monthly),"total_credit":str(state.total_credit),"stored_total_credit":str(money(row.total_credit)),"total_remaining":str(money(row.remaining_credit)),"legacy_used_credit":str(money(row.used_credit)),"legacy_remaining_credit":str(money(row.remaining_credit)),"carry_forward":str(state.carried_forward),"available_this_month":str(state.available_credit),"released_this_month":str(released),"used_this_month":str(used_month),"remaining_this_month":str(state.remaining_this_month),"available_now":str(state.remaining_this_month),"lifetime_used_credit":str(lifetime_used),"refunds_this_month":"0.00","not_yet_released":str(money(monthly*future)),"credit_status":state.code,"credit_message":state.message,"reporting_month":f"{start:%Y-%m}","start_date":row.start_date.isoformat(),"end_date":row.end_date.isoformat(),"payment_date":row.payment_date.isoformat(),"period":f"{row.start_date:%b %Y} – {row.end_date:%b %Y}","status":row.status,"payment_reference":row.payment_reference or "","notes":row.notes or "","refund_adjusted_usage_verified":False}
+
+class AllocationManagementView(BaseAdminResource):
+    required_resource = "advance_payments"
+    def get(self, request, allocation_id=None):
+        try:
+            start,end,as_of=reporting_period(request.query_params)
+            page=max(1,int(request.query_params.get("page",1))); size=min(100,max(1,int(request.query_params.get("page_size",20))))
+        except (ValueError,TypeError): return Response({"detail":"Invalid month, as_of_date or pagination."},status=400)
+        qs=AdvancePayAllocation.objects.order_by("-created_at","-id")
+        if allocation_id is not None: qs=qs.filter(pk=allocation_id)
+        if request.query_params.get("offer_id"):
+            try: qs=qs.filter(offer_id=int(request.query_params["offer_id"]))
+            except ValueError: return Response({"offer_id":"Must be an integer."},status=400)
+        search=request.query_params.get("user",request.query_params.get("search"," ")).strip()
+        if search:
+            ids=LegacyUser.objects.filter(Q(username__icontains=search)|Q(fullname__icontains=search)|Q(shop_name__icontains=search)).values_list("id",flat=True)
+            qs=qs.filter(Q(user_id__in=ids)|Q(payment_reference__icontains=search))
+        count=qs.count(); rows=list(qs if allocation_id is not None else qs[(page-1)*size:page*size])
+        if allocation_id is not None and not rows: return Response({"detail":"Allocation not found."},status=404)
+        users={x.id:x for x in LegacyUser.objects.filter(id__in={r.user_id for r in rows})}; offers={x.id:x for x in AdvancePayOffer.objects.filter(id__in={r.offer_id for r in rows})}
+        results=[serialize(r,users.get(r.user_id),offers.get(r.offer_id),start,end,as_of) for r in rows]
+        if allocation_id is not None: return Response(results[0])
+        return Response({"count":count,"page":page,"page_size":size,"month":start.strftime("%Y-%m"),"as_of_date":as_of.isoformat(),"results":results,"calculation_warnings":["The current ledger has no documented refund transaction type; usage is gross CREDIT_USED, not refund-adjusted.","Total-credit/future-release semantics need business confirmation before balances are treated as a financial statement."]})
+
+    def post(self, request, allocation_id=None):
+        if allocation_id is not None:
+            return Response({"detail": "POST is not allowed on an allocation detail URL; use /allocations."}, status=405)
+        try:
+            offer_id=int(request.data.get("offer_id")); user_id=int(request.data.get("user_id")); payment_date=date.fromisoformat(str(request.data.get("payment_date") or mc.local_today())); start=date.fromisoformat(str(request.data.get("start_date") or mc.local_today()))
+        except (ValueError,TypeError): return Response({"detail":"Valid offer_id, user_id and YYYY-MM-DD dates are required."},status=400)
+        offer=AdvancePayOffer.objects.filter(pk=offer_id,status="ACTIVE").first(); user=LegacyUser.objects.filter(pk=user_id).first()
+        if not offer: return Response({"offer_id":"Offer not found or inactive."},status=400)
+        if not user: return Response({"user_id":"Customer not found."},status=400)
+        try: end=date.fromisoformat(str(request.data["end_date"])) if request.data.get("end_date") else date(start.year+(start.month-1+offer.duration_months)//12,(start.month-1+offer.duration_months)%12+1,min(start.day,calendar.monthrange(start.year+(start.month-1+offer.duration_months)//12,(start.month-1+offer.duration_months)%12+1)[1]))
+        except ValueError: return Response({"end_date":"Use YYYY-MM-DD."},status=400)
+        if end<start or payment_date>mc.local_today(): return Response({"detail":"Invalid date range or future payment date."},status=400)
+        with transaction.atomic():
+            offer=AdvancePayOffer.objects.select_for_update().filter(pk=offer_id,status="ACTIVE").first()
+            if not offer: return Response({"offer_id":"Offer not found or inactive."},status=400)
+            locked_user=LegacyUser.objects.select_for_update().filter(pk=user_id).first()
+            if not locked_user: return Response({"user_id":"Customer not found."},status=400)
+            if AdvancePayAllocation.objects.select_for_update().filter(user_id=locked_user.id,status="ACTIVE").exists():
+                return Response({"detail":"Customer already has an active allocation."},status=409)
+            try: total=mc.total_credit(offer.payment_amount,offer.bonus_percentage,offer.duration_months)
+            except mc.CreditConfigError as exc: return Response({"offer_id":"Offer values are invalid: %s" % exc},status=400)
+            row=AdvancePayAllocation.objects.create(offer_id=offer.id,user_id=locked_user.id,payment_amount=offer.payment_amount,bonus_percentage=offer.bonus_percentage,duration_months=offer.duration_months,total_credit=total,used_credit=ZERO,remaining_credit=ZERO,start_date=start,end_date=end,payment_date=payment_date,payment_reference=str(request.data.get("payment_reference","")).strip() or None,notes=str(request.data.get("notes","")).strip() or None,status="ACTIVE",created_at=timezone.now(),updated_at=timezone.now())
+        return Response({"id":row.id,"status":row.status,"detail":"Allocation created."},status=201)
+
+    def patch(self, request, allocation_id=None):
+        try: rid=int(allocation_id if allocation_id is not None else request.data.get("id"))
+        except (ValueError,TypeError): return Response({"id":"Valid allocation id required."},status=400)
+        with transaction.atomic():
+            row=AdvancePayAllocation.objects.select_for_update().filter(pk=rid).first()
+            if not row: return Response({"detail":"Allocation not found."},status=404)
+            if any(k in request.data for k in ("offer_id","user_id","payment_amount","bonus_percentage","total_credit","remaining_credit")): return Response({"detail":"Financial identity and balances cannot be edited here; use an audited adjustment workflow."},status=400)
+            state=str(request.data.get("status",row.status)).upper().strip()
+            if state not in {"ACTIVE","COMPLETED","CANCELLED"}: return Response({"status":"Use ACTIVE, COMPLETED or CANCELLED."},status=400)
+            if row.status == "CANCELLED" and state != "CANCELLED": return Response({"detail":"Cancelled allocations cannot be reactivated."},status=409)
+            if row.status == "COMPLETED" and state == "ACTIVE": return Response({"detail":"Completed allocations cannot be reactivated."},status=409)
+            if any(f in request.data for f in ("start_date", "end_date", "payment_date")) and AdvancePayTransaction.objects.filter(allocation_id=rid).exists():
+                return Response({"detail":"Dates cannot be changed after ledger transactions exist; transaction history must remain consistent."},status=409)
+            try:
+                for f in ("start_date","end_date","payment_date"):
+                    if f in request.data: setattr(row,f,date.fromisoformat(str(request.data[f])))
+            except ValueError: return Response({"detail":"Dates must use YYYY-MM-DD."},status=400)
+            if row.end_date<row.start_date: return Response({"detail":"End date must not precede start date."},status=400)
+            row.status=state
+            for f in ("payment_reference","notes"):
+                if f in request.data: setattr(row,f,str(request.data[f]).strip() or None)
+            row.updated_at=timezone.now(); row.save()
+        return Response({"id":row.id,"status":row.status,"detail":"Allocation updated."})
+
+    def delete(self, request, allocation_id=None):
+        try: rid=int(allocation_id if allocation_id is not None else request.query_params.get("id",request.data.get("id")))
+        except (ValueError,TypeError): return Response({"id":"Valid allocation id required."},status=400)
+        with transaction.atomic():
+            row=AdvancePayAllocation.objects.select_for_update().filter(pk=rid).first()
+            if not row: return Response({"detail":"Allocation not found."},status=404)
+            row.status="CANCELLED"; row.updated_at=timezone.now(); row.save(update_fields=["status","updated_at"])
+        return Response({"id":row.id,"status":row.status,"detail":"Allocation cancelled; transaction history preserved."})

@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-10-15T20:44:36+05:30",
+  "workspace_root": "C:\\Users\\.MSI\\Downloads\\StokIt Backend",
+  "project_root_entries": [
+    "django_backend",
+    "admin_frontend"
+  ],
+  "source_dump_structural_validation": {
+    "original_create_table_count": 45,
+    "sanitized_create_table_count": 45,
+    "create_table_definitions_match": true,
+    "original_alter_table_count": 92,
+    "sanitized_alter_table_count": 92,
+    "alter_table_definitions_match": true,
+    "original_insert_statement_count": 39,
+    "sanitized_insert_statement_count": 39,
+    "original_trigger_count": 1,
+    "sanitized_trigger_count": 1,
+    "table_names_match": true,
+    "create_table_normalized_sha256": "380c880e8e3a039a85575e927419b267cb83f9186dc38f254a1fa29b473661d",
+    "alter_table_normalized_sha256": "2ad9f233b10496ad7762db31f761a21497f8d1dba5a8a551776b8ce6bc4fc8f8",
+    "scope": "DDL structure only; no row values used or imported"
+  },
+  "tuple_count_audit": {
+    "sanitized_standard_escape_tuple_count": 3224,
+    "sanitized_no_backslash_escape_tuple_count": 3224,
+    "original_standard_escape_tuple_count": 3224,
+    "original_no_backslash_escape_scan": "timed out after 120 seconds; unresolved",
+    "previously_reported_3219_vs_3224_discrepancy": "not reproduced by completed scans; not independently explained; no import permitted"
+  },
+  "target_readonly_state": {
+    "database": "stokit_postgres_dev",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "schema": "public",
+    "tables": {
+      "admins": {
+        "columns": 11,
+        "rows": 0
+      },
+      "admin_cart_discount_settings": {
+        "columns": 5,
+        "rows": 0
+      },
+      "django_migrations": {
+        "columns": 4,
+        "rows": 1
+      }
+    },
+    "migration_record": "adminapi.0001_cart_discount_settings"
+  },
+  "grammar_validation": {
+    "status": "BLOCKED",
+    "reason": "No candidate PostgreSQL DDL is present after authorized docs/backups deletion; pglast/sqlglot are not installed. sqlparse is not a PostgreSQL grammar validator.",
+    "no_database_execution": true
+  },
+  "semantic_validation": {
+    "status": "BLOCKED",
+    "reason": "See STOKIT_SCHEMA_DECISIONS_BLOCKERS.md; scope, collation, prefix index, enum/boolean conversions, timestamps, trigger, checkout ID allocator, JSON checks, timezone and auth/contenttypes remain unresolved."
+  },
+  "backup_restore": {
+    "status": "NOT VERIFIED",
+    "note": "No backup or restore was attempted during this read-only planning pass."
+  },
+  "writes_performed": false,
+  "migrations_run": false,
+  "admin_created": false,
+  "historical_data_imported": false,
+  "php_flutter_modified": false
+}

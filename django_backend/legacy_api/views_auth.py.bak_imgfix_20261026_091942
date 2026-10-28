@@ -1,0 +1,140 @@
+import math
+
+from django.conf import settings
+
+from accounts import services
+from accounts.hashers import verify_php_password
+
+from .common import (as_dict, base_url, execute, fetchone, jr, json_body, legacy_view)
+
+
+def _client_ip(request):
+    xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    return (xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")) or None
+
+
+def _php_empty(v):
+    return v is None or v is False or v == "" or v == 0 or v == "0" or v == [] or v == {}
+
+
+def _coordinate_text(v):
+    """Text for users.latitude/longitude (varchar(125)); None if the value cannot be a coordinate.
+
+    Only plain strings and finite numbers are accepted (the Flutter client sends numbers/strings).
+    No range or numeric-format rule is imposed: that would be a business-rule change.
+    """
+    if isinstance(v, bool) or not isinstance(v, (str, int, float)):
+        return None
+    if isinstance(v, float) and not math.isfinite(v):
+        return None
+    text = str(v)
+    if len(text) > 125 or "\x00" in text:
+        return None
+    return text
+
+
+@legacy_view(auth=False)
+def login(request):
+    """POST /api/login. Accepts a JSON body or form fields (any method, like PHP).
+
+    Contract (unchanged): ordinary failures are HTTP 200 with {"success":false,"message":...};
+    success is {"success":true,"message":"Login successful","token":...,"user":{id,username,email,fullname}}.
+    The 4th concurrent session is rejected as an ordinary failure in the same shape.
+    NOTE (preserved PHP behaviour): users.status is NOT checked at login.
+    """
+    data = as_dict(json_body(request))
+    username = data.get("username")
+    if username is None:
+        username = request.POST.get("username", "")
+    password = data.get("password")
+    if password is None:
+        password = request.POST.get("password", "")
+    username = str(username).strip()
+    password = "" if password is None else str(password)
+
+    if username == "" or password == "":
+        return jr({"success": False, "message": "Username and password are required"})
+    if "\x00" in username or "\x00" in password:
+        # PostgreSQL text parameters cannot contain NUL; treat as bad credentials, not a server error.
+        return jr({"success": False, "message": "Invalid username or password"})
+
+    user = fetchone(
+        "SELECT id, username, email, fullname, password FROM users WHERE username = %s LIMIT 1", [username]
+    )
+    if user and verify_php_password(password, user["password"]):
+        try:
+            token = services.create_session(
+                user["id"], request.META.get("HTTP_USER_AGENT", ""), _client_ip(request)
+            )
+        except services.SessionLimitReached:
+            limit = settings.MAX_ACTIVE_SESSIONS
+            message = (
+                f"Maximum {limit} active sessions allowed. Log out from another session and try again."
+                if limit is not None else "Unable to create a login session. Please try again."
+            )
+            return jr({"success": False, "message": message})
+        return jr({
+            "success": True,
+            "message": "Login successful",
+            "token": token,
+            "user": {
+                "id": user["id"], "username": user["username"],
+                "email": user["email"], "fullname": user["fullname"],
+            },
+        })
+    return jr({"success": False, "message": "Invalid username or password"})
+
+
+@legacy_view()
+def profile(request):
+    row = fetchone("SELECT * FROM users WHERE username = %s", [request.legacy_user["username"]])
+    if not row:
+        return jr(None)  # PHP echoed json_encode(undefined) => null
+    picture = row["profile_picture"] or "https://www.w3schools.com/howto/img_avatar.png"
+    created = row["created_at"].strftime("%Y-%m-%d") if row["created_at"] else "1970-01-01"
+    return jr({
+        "success": True,
+        "profile": {
+            "profile_picture_url": base_url() + picture,  # (PHP also prefixes the default avatar URL)
+            "shop_name": row["shop_name"],
+            "owner": row["fullname"],
+            "location": f"{row['address'] or ''}, {row['city'] or ''}",
+            "account_created_on": created,
+            "username": row["username"],
+            "mobile": row["phone"],
+            "email": row["email"],
+            "account_status": (row["status"] or "").lower(),
+            "VIP": row["vip_discount"],
+            "VIP_per": float(row["vip_percentage"] or 0),
+            "store_maped": row["store_maped"],
+        },
+    })
+
+
+@legacy_view()
+def geocode(request):
+    if request.method != "POST":
+        return jr({"status": "error", "message": "Only POST allowed"}, 405)
+    data = as_dict(json_body(request))
+    lat, lon = data.get("latitude"), data.get("longitude")
+    if _php_empty(lat) or _php_empty(lon):
+        return jr({"status": "error", "message": "Latitude and longitude are required."}, 400)
+    lat, lon = _coordinate_text(lat), _coordinate_text(lon)
+    if lat is None or lon is None:
+        return jr({"status": "error", "message": "Invalid latitude or longitude."}, 400)
+    username = request.legacy_user["username"]
+    cur = fetchone("SELECT latitude, longitude, store_maped FROM users WHERE username = %s", [username])
+    # PHP affected_rows counts CHANGED rows (Django's MySQL driver counts matched rows), so compare first.
+    changed = bool(cur) and not (cur["latitude"] == lat and cur["longitude"] == lon and cur["store_maped"] == "Y")
+    execute("UPDATE users SET latitude = %s, longitude = %s, store_maped = 'Y' WHERE username = %s",
+            [lat, lon, username])
+    if changed:
+        return jr({"status": "success", "message": "Location updated successfully."})
+    return jr({"status": "error", "message": "User not found or location already up to date."})
+
+
+@legacy_view()
+def logout(request):
+    """Revoke the bearer session presented to this request; safe to call repeatedly."""
+    services.revoke_session(request.legacy_session.pk, reason="logout")
+    return jr({"success": True, "message": "Logout successful"})

@@ -1,0 +1,170 @@
+[
+  {
+    "source": "LegacyUser.profile_picture",
+    "stored": "uploads/8ac5ebdca23f4208ae089f42102359c7.png",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/8ac5ebdca23f4208ae089f42102359c7.png",
+    "status": "ok",
+    "detail": "image/png"
+  },
+  {
+    "source": "LegacyUser.profile_picture",
+    "stored": "uploads/3a3f58ecf5b14833847f974f980db023.png",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/3a3f58ecf5b14833847f974f980db023.png",
+    "status": "ok",
+    "detail": "image/png"
+  },
+  {
+    "source": "Category.category_image",
+    "stored": "uploads/584ade6568d14bb9a18a8c01de9e270b.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/584ade6568d14bb9a18a8c01de9e270b.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  },
+  {
+    "source": "Category.category_image",
+    "stored": "uploads/693c30e279364302bad675aea5c7f31c.png",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/693c30e279364302bad675aea5c7f31c.png",
+    "status": "ok",
+    "detail": "image/png"
+  },
+  {
+    "source": "Category.category_image",
+    "stored": "uploads/2b02e9d62a404eba8ae52b0c982bbf98.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/2b02e9d62a404eba8ae52b0c982bbf98.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  },
+  {
+    "source": "Subcategory.subcategory_image",
+    "stored": "uploads/40dbd00b33324424bfff9122b5ec3ca8.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/40dbd00b33324424bfff9122b5ec3ca8.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  },
+  {
+    "source": "Subcategory.subcategory_image",
+    "stored": "uploads/29fcfa3d7329409789625adf03021e51.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/29fcfa3d7329409789625adf03021e51.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  },
+  {
+    "source": "Subcategory.subcategory_image",
+    "stored": "uploads/9276c9163fce4ada949ffb8319f4c428.png",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/9276c9163fce4ada949ffb8319f4c428.png",
+    "status": "ok",
+    "detail": "image/png"
+  },
+  {
+    "source": "ProductImage.image_path",
+    "stored": "uploads/c84a392c9f6e4e60b316bbbb55bf32a0.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/c84a392c9f6e4e60b316bbbb55bf32a0.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  },
+  {
+    "source": "ProductImage.image_path",
+    "stored": "uploads/40e3858efaf24809b127fa8c60d78f49.png",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/40e3858efaf24809b127fa8c60d78f49.png",
+    "status": "ok",
+    "detail": "image/png"
+  },
+  {
+    "source": "ProductImage.image_path",
+    "stored": "uploads/458fd3be7f0c4fb492d1bd8ea6f4424a.png",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/458fd3be7f0c4fb492d1bd8ea6f4424a.png",
+    "status": "ok",
+    "detail": "image/png"
+  },
+  {
+    "source": "ProductImage.image_path",
+    "stored": "uploads/8069fad34dd94cc599eea92088cdc85c.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/8069fad34dd94cc599eea92088cdc85c.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  },
+  {
+    "source": "ProductImage.image_path",
+    "stored": "uploads/21c888faef1846afb089b785fb4cd487.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/21c888faef1846afb089b785fb4cd487.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  },
+  {
+    "source": "ProductImage.image_path",
+    "stored": "uploads/470c68c8a0b24bada0a1af6f07c439a8.png",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/470c68c8a0b24bada0a1af6f07c439a8.png",
+    "status": "ok",
+    "detail": "image/png"
+  },
+  {
+    "source": "ProductImage.image_path",
+    "stored": "uploads/1b8d2f830d004aeca27e168f7599aaef.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/1b8d2f830d004aeca27e168f7599aaef.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  },
+  {
+    "source": "ProductImage.image_path",
+    "stored": "uploads/603d73311f5744debed764c8190bb3c9.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/603d73311f5744debed764c8190bb3c9.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  },
+  {
+    "source": "Slider.image_path",
+    "stored": "uploads/cd8c10a8c3f944e8a347b7e8fd0616b9.png",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/cd8c10a8c3f944e8a347b7e8fd0616b9.png",
+    "status": "ok",
+    "detail": "image/png"
+  },
+  {
+    "source": "Slider.image_path",
+    "stored": "uploads/e9dd5cd9f8694592a524f3f7eb982c14.png",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/e9dd5cd9f8694592a524f3f7eb982c14.png",
+    "status": "ok",
+    "detail": "image/png"
+  },
+  {
+    "source": "AdvancePayOffer.image_path",
+    "stored": "uploads/offers/1792757669_bbbbbbbbbbb.webp",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/offers/1792757669_bbbbbbbbbbb.webp",
+    "status": "ok",
+    "detail": "image/webp"
+  },
+  {
+    "source": "AdvancePayOffer.image_path",
+    "stored": "uploads/offers/1792126062_Screenshot2.webp",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/offers/1792126062_Screenshot2.webp",
+    "status": "ok",
+    "detail": "image/webp"
+  },
+  {
+    "source": "AdvancePayOffer.image_path",
+    "stored": "uploads/offers/1792646586_Screenshot2.webp",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/offers/1792646586_Screenshot2.webp",
+    "status": "ok",
+    "detail": "image/webp"
+  },
+  {
+    "source": "Target.reward_image",
+    "stored": "uploads/a8651379e0ac44549efe4b761fd66e94.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/a8651379e0ac44549efe4b761fd66e94.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  },
+  {
+    "source": "Target.reward_image",
+    "stored": "uploads/46c781d237ce43398e3b6dc8f986e1e5.png",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/46c781d237ce43398e3b6dc8f986e1e5.png",
+    "status": "ok",
+    "detail": "image/png"
+  },
+  {
+    "source": "Target.reward_image",
+    "stored": "uploads/f53c320d7c4345559c4ae7b4134ddac9.jpg",
+    "url": "http://127.0.0.1:8000/admin/manage/uploads/f53c320d7c4345559c4ae7b4134ddac9.jpg",
+    "status": "ok",
+    "detail": "image/jpeg"
+  }
+]

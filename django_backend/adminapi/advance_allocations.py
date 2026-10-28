@@ -1,0 +1,190 @@
+import calendar
+from datetime import date
+from decimal import Decimal, InvalidOperation
+from django.db import transaction
+from django.db.models import Sum
+from django.utils import timezone
+from rest_framework.response import Response
+from .operations import BaseAdminResource
+from legacydb import monthly_credit as mc
+from legacydb.models import AdvancePayAllocation, AdvancePayOffer, AdvancePayTransaction, LegacyUser
+
+def add_months(start, months):
+    index = start.month - 1 + int(months)
+    year = start.year + index // 12
+    month = index % 12 + 1
+    return date(year, month, min(start.day, calendar.monthrange(year, month)[1]))
+
+ZERO = Decimal('0.00')
+
+
+def ledger_balances(allocations):
+    """{allocation_id: {...}} Used and Remaining Credit for the admin table, derived from the ledger.
+
+    Scope (unchanged from the PHP-compatible columns this table has always shown): LIFETIME, i.e. across the whole
+    allocation, not one month.
+      used_credit      = every valid CREDIT_USED row (orders; manual balance corrections are excluded, exactly as
+                         legacydb.monthly_credit counts spending).
+      remaining_credit = total potential credit - used_credit, plus the net of manual balance corrections.
+    The stored ``used_credit`` / ``remaining_credit`` columns are only a cache that commit_order_credit keeps in step; they
+    are returned as ``stored_*`` so drift is visible, never used as the displayed figure. One grouped query per page.
+    A row whose offer terms are invalid falls back to the stored columns and says so in ``credit_warning``.
+    """
+    ids = [a.id for a in allocations]
+    sums = {}
+    if ids:
+        for r in AdvancePayTransaction.objects.filter(allocation_id__in=ids).values('allocation_id', 'transaction_type', 'reference_type').annotate(total=Sum('amount')):
+            sums.setdefault(r['allocation_id'], []).append(r)
+    out = {}
+    for a in allocations:
+        used = manual_added = manual_used = ZERO
+        for r in sums.get(a.id, []):
+            amount = mc.money(r['total'])
+            if mc.is_valid_usage(r['transaction_type'], r['reference_type']):
+                used += amount
+            elif str(r['reference_type'] or '') == mc.MANUAL_ADJUSTMENT_REFERENCE_TYPE:
+                if str(r['transaction_type'] or '').upper() == 'CREDIT_ADDED': manual_added += amount
+                elif str(r['transaction_type'] or '').upper() == mc.USAGE_TYPE: manual_used += amount
+        stored_used, stored_remaining = mc.money(a.used_credit), mc.money(a.remaining_credit)
+        warning = ''
+        try:
+            total = mc.total_credit(a.payment_amount, a.bonus_percentage, a.duration_months)
+            remaining = max(ZERO, total - used + manual_added - manual_used)
+        except mc.CreditConfigError as exc:
+            total, used, remaining, warning = mc.money(a.total_credit), stored_used, stored_remaining, 'Offer values are invalid (%s); showing stored balances.' % exc
+        out[a.id] = {'total_credit': total, 'used_credit': used, 'remaining_credit': remaining,
+                     'stored_used_credit': stored_used, 'stored_remaining_credit': stored_remaining,
+                     'ledger_matches_stored': (used == stored_used and remaining == stored_remaining), 'credit_warning': warning}
+    return out
+
+
+class AdvanceAllocationAdminView(BaseAdminResource):
+    required_resource = 'advance_payments'
+
+    def get(self, request):
+        qs = AdvancePayAllocation.objects.order_by('-created_at', '-id')
+        search = request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(status__icontains=search) | qs.filter(payment_reference__icontains=search) | qs.filter(notes__icontains=search)
+        try:
+            page = max(1, int(request.query_params.get('page', 1)))
+            size = min(100, max(1, int(request.query_params.get('page_size', 20))))
+        except (ValueError, TypeError):
+            return Response({'detail': 'Invalid pagination'}, status=400)
+        rows = list(qs[(page-1)*size:page*size])
+        users = {x.id: x for x in LegacyUser.objects.filter(id__in=[r.user_id for r in rows])}
+        offers = {x.id: x for x in AdvancePayOffer.objects.filter(id__in=[r.offer_id for r in rows])}
+        balances = ledger_balances(rows)
+        results = []
+        for row in rows:
+            user = users.get(row.user_id); offer = offers.get(row.offer_id)
+            balance = balances[row.id]
+            results.append({'id': row.id, 'user_id': row.user_id, 'username': user.username if user else '',
+                'full_name': user.fullname if user else '', 'offer_id': row.offer_id, 'offer_name': offer.offer_name if offer else '',
+                'payment_amount': str(row.payment_amount), 'bonus_percentage': str(row.bonus_percentage), 'monthly_bonus': str(mc.monthly_credit_release(row.payment_amount, row.bonus_percentage)),
+                'duration_months': row.duration_months, 'total_credit': str(balance['total_credit']),
+                'used_credit': str(balance['used_credit']), 'remaining_credit': str(balance['remaining_credit']),
+                'credit_scope': 'lifetime', 'stored_used_credit': str(balance['stored_used_credit']),
+                'stored_remaining_credit': str(balance['stored_remaining_credit']),
+                'ledger_matches_stored': balance['ledger_matches_stored'], 'credit_warning': balance['credit_warning'],
+                'start_date': row.start_date, 'end_date': row.end_date, 'payment_date': row.payment_date,
+                'payment_reference': row.payment_reference, 'notes': row.notes, 'status': row.status})
+        return Response({'count': qs.count(), 'page': page, 'page_size': size, 'results': results})
+
+    def post(self, request):
+        try:
+            offer_id = int(request.data.get('offer_id')); user_id = int(request.data.get('user_id'))
+        except (ValueError, TypeError):
+            return Response({'detail': 'Valid offer_id and user_id are required'}, status=400)
+        try:
+            payment_date = date.fromisoformat(str(request.data.get('payment_date') or date.today().isoformat()))
+        except ValueError:
+            return Response({'payment_date': 'Use YYYY-MM-DD'}, status=400)
+        with transaction.atomic():
+            offer = AdvancePayOffer.objects.select_for_update().filter(pk=offer_id, status='ACTIVE').first()
+            if not offer: return Response({'offer_id': 'Offer not found or inactive'}, status=400)
+            user = LegacyUser.objects.filter(pk=user_id).first()
+            if not user: return Response({'user_id': 'Customer not found'}, status=400)
+            start = date.today(); end = add_months(start, offer.duration_months)
+            # remaining_credit starts at the full potential credit (the PHP-compatible lifetime meaning, same as an
+            # allocation created by the legacy backend); each committed order then reduces it. What a customer can
+            # spend in a month is derived from the offer terms and the ledger (legacydb.monthly_credit), never from this column.
+            try: total = mc.total_credit(offer.payment_amount, offer.bonus_percentage, offer.duration_months)
+            except mc.CreditConfigError as exc: return Response({'offer_id': 'Offer values are invalid: %s' % exc}, status=400)
+            row = AdvancePayAllocation.objects.create(offer_id=offer.id, user_id=user.id,
+                payment_amount=offer.payment_amount, bonus_percentage=offer.bonus_percentage,
+                duration_months=offer.duration_months, total_credit=total, used_credit=0,
+                remaining_credit=total, start_date=start, end_date=end, payment_date=payment_date,
+                payment_reference=str(request.data.get('payment_reference', '')).strip() or None,
+                notes=str(request.data.get('notes', '')).strip() or None, status='ACTIVE',
+                created_at=timezone.now(), updated_at=timezone.now())
+        return Response({'id': row.id, 'user_id': row.user_id, 'offer_id': row.offer_id,
+            'total_credit': str(row.total_credit), 'monthly_bonus': str(mc.monthly_credit_release(row.payment_amount, row.bonus_percentage)), 'remaining_credit': str(row.remaining_credit), 'status': row.status}, status=201)
+
+    def patch(self, request):
+        try: allocation_id = int(request.data.get('id'))
+        except (ValueError, TypeError): return Response({'id': 'Valid allocation id required'}, status=400)
+        with transaction.atomic():
+            row = AdvancePayAllocation.objects.select_for_update().filter(pk=allocation_id).first()
+            if not row: return Response({'detail': 'Allocation not found'}, status=404)
+            old_remaining = Decimal(str(row.remaining_credit or 0))
+            user_id = row.user_id
+            if 'user_id' in request.data:
+                try: user_id = int(request.data['user_id'])
+                except (ValueError, TypeError): return Response({'user_id': 'Valid customer id required'}, status=400)
+                if not LegacyUser.objects.filter(pk=user_id).exists(): return Response({'user_id': 'Customer not found'}, status=400)
+            status_value = str(request.data.get('status', row.status)).upper()
+            if status_value not in ('ACTIVE', 'COMPLETED', 'CANCELLED'):
+                return Response({'status': 'Use ACTIVE, COMPLETED or CANCELLED'}, status=400)
+            if status_value == 'ACTIVE' and AdvancePayAllocation.objects.filter(user_id=user_id, status='ACTIVE').exclude(pk=allocation_id).exists():
+                return Response({'detail': 'Customer already has another active allocation'}, status=409)
+            offer_changed = False
+            if 'offer_id' in request.data:
+                try: offer_id = int(request.data['offer_id'])
+                except (ValueError, TypeError): return Response({'offer_id': 'Valid offer id required'}, status=400)
+                offer = AdvancePayOffer.objects.filter(pk=offer_id).first()
+                if not offer: return Response({'offer_id': 'Offer not found'}, status=400)
+                if offer_id != row.offer_id:
+                    offer_changed = True; row.offer_id = offer.id
+                    row.payment_amount = offer.payment_amount; row.bonus_percentage = offer.bonus_percentage
+                    row.duration_months = offer.duration_months; row.total_credit = offer.total_credit
+                    row.remaining_credit = max(Decimal('0'), Decimal(str(offer.total_credit)) - Decimal(str(row.used_credit or 0)))
+                    try:
+                        row.start_date = date.fromisoformat(str(request.data.get('start_date') or date.today().isoformat()))
+                        row.end_date = date.fromisoformat(str(request.data.get('end_date') or add_months(row.start_date, offer.duration_months).isoformat()))
+                    except ValueError:
+                        return Response({'detail': 'start_date and end_date must use YYYY-MM-DD'}, status=400)
+            row.user_id = user_id; row.status = status_value
+            for field in ('payment_date', 'start_date', 'end_date'):
+                if field in request.data:
+                    try: setattr(row, field, date.fromisoformat(str(request.data[field])))
+                    except ValueError: return Response({field: 'Use YYYY-MM-DD'}, status=400)
+            if 'payment_reference' in request.data: row.payment_reference = str(request.data['payment_reference']).strip() or None
+            if 'notes' in request.data: row.notes = str(request.data['notes']).strip() or None
+            if 'remaining_credit' in request.data and not offer_changed:
+                try: remaining = Decimal(str(request.data['remaining_credit']))
+                except (ValueError, TypeError, InvalidOperation): return Response({'remaining_credit': 'Enter a valid amount'}, status=400)
+                if remaining < 0: return Response({'remaining_credit': 'Must be non-negative'}, status=400)
+                delta = remaining - old_remaining
+                if delta:
+                    transaction_type = 'CREDIT_ADDED' if delta > 0 else 'CREDIT_USED'
+                    reason = str(request.data.get('adjustment_note', '')).strip() or 'Manual credit adjustment'
+                    AdvancePayTransaction.objects.create(allocation_id=row.id, user_id=user_id,
+                        amount=abs(delta), transaction_type=transaction_type, notes=reason,
+                        # Tagged so lifetime-balance corrections never count as monthly spending (see legacydb/monthly_credit.py).
+                        reference_type=mc.MANUAL_ADJUSTMENT_REFERENCE_TYPE, created_at=mc.local_now())
+                row.remaining_credit = remaining
+            row.updated_at = timezone.now(); row.save()
+        return Response({'id': row.id, 'user_id': row.user_id, 'offer_id': row.offer_id,
+            'remaining_credit': str(row.remaining_credit), 'status': row.status})
+
+    def delete(self, request):
+        try: allocation_id = int(request.query_params.get('id', request.data.get('id')))
+        except (ValueError, TypeError): return Response({'id': 'Valid allocation id required'}, status=400)
+        with transaction.atomic():
+            row = AdvancePayAllocation.objects.select_for_update().filter(pk=allocation_id).first()
+            if not row: return Response({'detail': 'Allocation not found'}, status=404)
+            AdvancePayTransaction.objects.filter(allocation_id=allocation_id).delete()
+            row.delete()
+        return Response(status=204)
+

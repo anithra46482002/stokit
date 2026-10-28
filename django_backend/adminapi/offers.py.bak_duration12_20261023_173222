@@ -1,0 +1,196 @@
+"""Advance Pay Offers for the React admin, matching the legacy PHP pages
+(offers_list.php, add_offer.php, delete_offer.php).
+
+* Offer images are converted to WebP (max 1200 px, quality 80) and stored as uploads/offers/<time>_<name>.webp,
+  the same path format the PHP admin used, so existing rows and the Flutter URLs keep working.
+* Deleting an offer that already has allocations deactivates it instead (delete_offer.php behaviour).
+"""
+import re
+import time
+from decimal import Decimal, InvalidOperation
+
+from django.conf import settings
+from django.utils import timezone
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.response import Response
+from legacydb import monthly_credit as mc
+from legacydb.models import AdvancePayAllocation, AdvancePayOffer
+from .operations import AdvancePaymentAdminView as _BaseOfferView
+
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MAX_EDGE = 1200
+WEBP_QUALITY = 80
+ALLOWED_FORMATS = {"JPEG", "PNG", "GIF", "WEBP"}
+HUNDRED = Decimal("100")
+
+
+def _offers_dir():
+    return settings.MEDIA_ROOT / "uploads" / "offers"
+
+
+def process_offer_image(upload):
+    """Validate an uploaded image and store it as WebP. Returns the legacy-relative path. Raises ValueError."""
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    if upload.size > MAX_IMAGE_BYTES:
+        raise ValueError("Image must be 5 MB or smaller.")
+    try:
+        probe = Image.open(upload)
+        probe.verify()
+        upload.seek(0)
+        image = Image.open(upload)
+        if image.format not in ALLOWED_FORMATS:
+            raise ValueError("Supported formats: JPG, PNG, GIF, WebP.")
+        image.load()  # first frame only for animated GIF/WebP
+    except ValueError:
+        raise
+    except (UnidentifiedImageError, OSError, SyntaxError, Image.DecompressionBombError):
+        raise ValueError("The file is not a valid JPG, PNG, GIF or WebP image.")
+    image = ImageOps.exif_transpose(image)
+    image.thumbnail((MAX_EDGE, MAX_EDGE), Image.Resampling.LANCZOS)  # keeps aspect ratio, never upscales
+    has_alpha = image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info)
+    image = image.convert("RGBA" if has_alpha else "RGB")
+
+    stem = re.sub(r"[^a-zA-Z0-9._-]", "", (upload.name or "").rsplit("/", 1)[-1])
+    stem = stem.rsplit(".", 1)[0][:80] or "offer"
+    folder = _offers_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    base = f"{int(time.time())}_{stem}"
+    name, counter = base + ".webp", 1
+    while (folder / name).exists():
+        name, counter = f"{base}_{counter}.webp", counter + 1
+    image.save(folder / name, "WEBP", quality=WEBP_QUALITY)
+    return f"uploads/offers/{name}"
+
+
+def remove_offer_image(image_path):
+    """Delete a stored offer image, but only inside uploads/offers."""
+    if not image_path:
+        return
+    target = (settings.MEDIA_ROOT / image_path).resolve()
+    folder = _offers_dir().resolve()
+    if folder in target.parents and target.is_file():
+        target.unlink()
+
+
+def _valid_image_path(value):
+    value = (value or "").strip()
+    return value if value.startswith("uploads/") and ".." not in value and "\\" not in value else None
+
+
+def _benefit(offer):
+    """Total offer benefit: monthly bonus multiplied by duration, using shared Decimal rules."""
+    return mc.total_credit(offer.payment_amount, offer.bonus_percentage, offer.duration_months)
+
+
+def _offer_out(offer, request=None):
+    path = offer.image_path or ""
+    image_url = ""
+    if path:
+        # Uploaded offer images are stored on this Django instance. In local DEBUG,
+        # return the local media-serving URL when the file exists; otherwise retain
+        # the legacy PHP URL for existing production-hosted images.
+        local_file = settings.MEDIA_ROOT / path
+        if (settings.DEBUG or getattr(settings, "SERVE_LOCAL_UPLOADS", False)) and local_file.is_file() and request is not None:
+            image_url = request.build_absolute_uri("/admin/manage/" + path.lstrip("/"))
+        else:
+            image_url = settings.LEGACY_BASE_URL + path
+    return {"id": offer.id, "offer_name": offer.offer_name, "payment_amount": str(offer.payment_amount),
+            "bonus_percentage": str(offer.bonus_percentage), "duration_months": offer.duration_months,
+            "benefit": str(_benefit(offer).quantize(Decimal("0.01"))),
+            "status": offer.status, "image_path": path, "image_url": image_url}
+
+
+class AdvancePaymentOffersView(_BaseOfferView):
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def get(self, request):
+        qs = AdvancePayOffer.objects.order_by("-created_at", "-id")
+        search = request.query_params.get("search", "").strip()
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(Q(offer_name__icontains=search) | Q(status__icontains=search))
+        rows = [_offer_out(o, request) for o in qs]
+        return Response({"count": len(rows), "page": 1, "page_size": max(len(rows), 1), "results": rows})
+
+    def post(self, request):
+        data = request.data
+        name = str(data.get("offer_name", "")).strip()
+        errors = []
+        try:
+            amount = Decimal(str(data.get("payment_amount") or 0))
+            bonus = Decimal(str(data.get("bonus_percentage") or 0))
+            months = int(Decimal(str(data.get("duration_months") or 0)))
+        except (InvalidOperation, ValueError, TypeError):
+            return Response({"detail": "Valid payment amount, bonus percentage and duration are required.",
+                             "errors": ["Valid payment amount, bonus percentage and duration are required."]}, status=400)
+        if not name:
+            errors.append("Offer name is required.")
+        elif len(name) > 255:
+            errors.append("Offer name must be at most 255 characters.")
+        if amount <= 0:
+            errors.append("Payment amount must be greater than 0.")
+        if bonus < 0:
+            errors.append("Bonus percentage cannot be negative.")
+        elif bonus > 100:
+            errors.append("Bonus percentage cannot be more than 100.")
+        if months <= 0:
+            errors.append("Duration must be greater than 0 months.")
+        status_value = str(data.get("status") or "ACTIVE").upper()
+        if status_value not in ("ACTIVE", "INACTIVE"):
+            errors.append("Status must be Active or Inactive.")
+        image_path = None
+        upload = request.FILES.get("offer_image")
+        if not errors and upload is not None:
+            try:
+                image_path = process_offer_image(upload)
+            except ValueError as exc:
+                errors.append(str(exc))
+        elif not errors:
+            image_path = _valid_image_path(data.get("image_path"))
+        if errors:
+            return Response({"detail": errors[0], "errors": errors}, status=400)
+        try:
+            offer = AdvancePayOffer.objects.create(
+                offer_name=name, payment_amount=amount, bonus_percentage=bonus, duration_months=months,
+                total_credit=((amount * bonus / HUNDRED) * months).quantize(Decimal("0.01")), status=status_value, image_path=image_path or "",
+                created_at=timezone.now(), updated_at=timezone.now())
+        except Exception:
+            remove_offer_image(image_path if upload is not None else None)
+            raise
+        return Response({"message": "Offer added successfully", **_offer_out(offer, request)}, status=201)
+
+    def patch(self, request):
+        upload = request.FILES.get("offer_image")
+        new_path = None
+        if upload is not None:
+            try:
+                new_path = process_offer_image(upload)
+            except ValueError as exc:
+                return Response({"detail": str(exc), "errors": [str(exc)]}, status=400)
+        response = super().patch(request)
+        if new_path:
+            if response.status_code == 200:
+                offer = AdvancePayOffer.objects.filter(pk=response.data["id"]).first()
+                old = offer.image_path if offer else None
+                AdvancePayOffer.objects.filter(pk=response.data["id"]).update(image_path=new_path, updated_at=timezone.now())
+                remove_offer_image(old)
+            else:
+                remove_offer_image(new_path)
+        return response
+
+    def delete(self, request):
+        try:
+            offer_id = int(request.query_params.get("id", request.data.get("id")))
+        except (ValueError, TypeError):
+            return Response({"id": "Valid offer id required"}, status=400)
+        offer = AdvancePayOffer.objects.filter(pk=offer_id).first()
+        if not offer:
+            return Response({"detail": "Offer not found"}, status=404)
+        if AdvancePayAllocation.objects.filter(offer_id=offer_id).exists():
+            AdvancePayOffer.objects.filter(pk=offer_id).update(status="INACTIVE", updated_at=timezone.now())
+            return Response({"deleted": False, "message": "Offer deactivated as it has existing allocations"})
+        image = offer.image_path
+        AdvancePayOffer.objects.filter(pk=offer_id).delete()
+        remove_offer_image(image)
+        return Response({"deleted": True, "message": "Offer deleted successfully"})

@@ -1,0 +1,40 @@
+// Pure helpers for the product-variant Edit/Delete UI (kept free of React so they are unit-testable).
+import { describeApiError } from './productSettings.js';
+
+// The server's `detail` string when there is one ("Variant is referenced by order history..."), otherwise
+// the field errors flattened to text. Never a raw JSON blob.
+export function apiErrorText(err) {
+  const body = err?.response?.data;
+  if (body && typeof body === 'object' && typeof body.detail === 'string') return body.detail;
+  return describeApiError(err);
+}
+
+// Honest, actionable message for a failed delete. `label` identifies the record (name + id).
+export function describeDeleteError(err, label) {
+  const status = err?.response?.status;
+  if (!err?.response) {
+    return `"${label}" was not deleted: ${err?.message || 'the server could not be reached'}. Nothing was removed; check the connection and try again.`;
+  }
+  const detail = apiErrorText(err);
+  if (status === 409) return `"${label}" was not deleted: ${detail}. It was kept.`;
+  if (status === 404) return `"${label}" no longer exists (it may already have been deleted). The list has been refreshed.`;
+  if (status === 401 || status === 403) return `"${label}" was not deleted: you do not have permission for this action (${detail}).`;
+  if (status >= 500) return `"${label}" was not deleted because of a server error. Nothing was removed. ${detail}`;
+  return `"${label}" was not deleted: ${detail}`;
+}
+
+// After removing a row: step back one page when the deleted row was the only one on a later page,
+// so the admin is not left looking at an empty page.
+export function pageAfterDelete(page, rowCountOnPage) {
+  return page > 1 && rowCountOnPage <= 1 ? page - 1 : page;
+}
+
+export function describeVariant(row) {
+  return `${row?.name ?? 'Variant'} (variant ID ${row?.id}, product ID ${row?.product_id})`;
+}
+
+// The exact DELETE request the admin list sends: id both as a query parameter and in the JSON body,
+// authenticated by the shared client's interceptor. Resolves only when the server confirmed (2xx).
+export async function deleteRecord(api, endpoint, moduleParams, id) {
+  return api.delete(endpoint, { params: { ...(moduleParams || {}), id }, data: { ...(moduleParams || {}), id } });
+}

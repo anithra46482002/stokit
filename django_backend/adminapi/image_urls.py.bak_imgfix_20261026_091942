@@ -1,0 +1,48 @@
+"""Resolve image URLs without sending local uploads to the legacy host."""
+from django.conf import settings
+
+
+def image_url(path, request=None):
+    """Return an absolute URL for a legacy image or an explicitly served local upload.
+
+    Existing absolute URLs are preserved. Relative paths backed by MEDIA_ROOT are only
+    published when SERVE_LOCAL_UPLOADS is explicitly enabled. Missing local files retain
+    the legacy-host fallback for pre-existing PHP-hosted assets.
+    """
+    value = str(path or "").strip()
+    if not value:
+        return None
+    if value.startswith(("https://", "http://")):
+        return value
+
+    # Legacy records can store either `uploads/file.jpg` or a URL-path prefix
+    # such as `/admin/manage/uploads/file.jpg`. Normalize both to the media-relative
+    # path before checking MEDIA_ROOT and constructing a URL.
+    value = value.replace("\\", "/")
+    while value.startswith("/"):
+        value = value[1:]
+    for prefix in ("admin/manage/", "manage/"):
+        if value.startswith(prefix):
+            value = value[len(prefix):]
+            break
+    relative = value
+    media_root = settings.MEDIA_ROOT.resolve()
+    local_file = (media_root / relative).resolve()
+    try:
+        local_file.relative_to(media_root)
+    except ValueError:
+        return None
+
+    if local_file.is_file() and relative.startswith("uploads/"):
+        if not getattr(settings, "SERVE_LOCAL_UPLOADS", False) or request is None:
+            return None
+        from urllib.parse import quote
+        encoded_path = "/".join(quote(part) for part in relative.split("/"))
+        return request.build_absolute_uri("/admin/manage/" + encoded_path)
+
+    base = getattr(settings, "LEGACY_BASE_URL", "").rstrip("/")
+    if not base:
+        return None
+    from urllib.parse import quote
+    encoded_path = "/".join(quote(part) for part in relative.split("/"))
+    return f"{base}/{encoded_path}"

@@ -1,0 +1,207 @@
+"""Monthly bonus release and order-confirmation deduction for legacy StokIt tables.
+
+The legacy schema has no period or idempotency columns. Periods and order references are
+therefore recorded in the existing advance_pay_transactions notes/reference fields.
+"""
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal, ROUND_HALF_UP
+
+from django.db import connection
+from django.utils import timezone
+
+CENT = Decimal("0.01")
+ZERO = Decimal("0.00")
+
+
+def _money(value):
+    return Decimal(str(value or 0)).quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+def _monthly_bonus(payment_amount, bonus_percentage):
+    """Monthly bonus is derived from the exact offer assigned to this customer."""
+    return _money(_money(payment_amount) * _money(bonus_percentage) / Decimal("100"))
+
+def _month_count(start, today, duration):
+    if not start or start > today or int(duration or 0) <= 0:
+        return 0
+    elapsed = (today.year - start.year) * 12 + today.month - start.month + 1
+    return max(0, min(int(duration), elapsed))
+
+
+
+def _current_month_window(today=None):
+    """Return timezone-aware [month start, next month start) boundaries."""
+    today = today or datetime.now(timezone.get_current_timezone()).date()
+    start_date = today.replace(day=1)
+    next_date = date(start_date.year + (start_date.month == 12), 1 if start_date.month == 12 else start_date.month + 1, 1)
+    tz = timezone.get_current_timezone()
+    start = timezone.make_aware(datetime.combine(start_date, time.min), tz)
+    end = timezone.make_aware(datetime.combine(next_date, time.min), tz)
+    return start, end
+
+
+def _used_this_month(cursor, allocation_id, today=None):
+    start, end = _current_month_window(today)
+    cursor.execute(
+        "SELECT COALESCE(SUM(amount),0) FROM advance_pay_transactions "
+        "WHERE allocation_id=%s AND transaction_type='CREDIT_USED' AND created_at >= %s AND created_at < %s",
+        [allocation_id, start, end],
+    )
+    return _money(cursor.fetchone()[0])
+
+
+def _legacy_available(remaining, used, earned):
+    """Cap legacy preloaded balances to earned-to-date, recovering stale zero balances."""
+    eligible_unused = max(ZERO, _money(earned - used))
+    stored = _money(remaining)
+    # Older release paths could reset remaining_credit to zero while preserving the initial
+    # allocation marker. Recover only earned-to-date credit net of recorded usage.
+    return min(stored, eligible_unused) if stored > ZERO else eligible_unused
+
+
+def _has_month_marker(cursor, allocation_id, marker):
+    cursor.execute(
+        "SELECT id FROM advance_pay_transactions WHERE allocation_id=%s AND transaction_type='CREDIT_ADDED' AND notes=%s LIMIT 1",
+        [allocation_id, marker],
+    )
+    return cursor.fetchone() is not None
+
+
+def preview_customer_bonus(email, purchase_amount, today=None, order_id=None):
+    """Read-only estimate; never writes or reserves credit."""
+    today = today or datetime.now(timezone.get_current_timezone()).date()
+    purchase = max(ZERO, _money(purchase_amount))
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT id, payment_amount, bonus_percentage, total_credit, used_credit, remaining_credit, start_date, end_date, duration_months, status "
+            "FROM advance_pay_allocations WHERE user_id=(SELECT id FROM users WHERE email=%s ORDER BY id LIMIT 1) "
+            "AND UPPER(status)='ACTIVE' ORDER BY id DESC LIMIT 1", [email]
+        )
+        allocation = cursor.fetchone()
+        if not allocation:
+            return {"monthly_bonus": ZERO, "carried_forward": ZERO, "available_bonus": ZERO,
+                    "bonus_applied": ZERO, "amount_payable": purchase, "remaining_bonus": ZERO,
+                    "credit_status": "no_active_allocation"}
+        allocation_id, payment_amount, bonus_percentage, total, used, remaining, start, end, duration, status = allocation
+        total, used, remaining = _money(total), _money(used), _money(remaining)
+        months = _month_count(start, today, duration)
+        payment_amount = _money(payment_amount)
+        bonus_percentage = _money(bonus_percentage)
+        monthly = _monthly_bonus(payment_amount, bonus_percentage) if duration else ZERO
+        # Only the current calendar month's allowance is spendable; unused credit never carries forward.
+        if today < start or today > end or months == 0:
+            available = ZERO
+        else:
+            used_this_month = _used_this_month(cursor, allocation_id, today)
+            available = max(ZERO, monthly - used_this_month)
+        carried = ZERO
+        already_applied = None
+        if order_id is not None:
+            cursor.execute("SELECT amount FROM advance_pay_transactions WHERE allocation_id=%s AND reference_type='ORDER_BONUS' AND reference_id=%s LIMIT 1", [allocation_id, order_id])
+            saved = cursor.fetchone()
+            if saved:
+                already_applied = _money(saved[0])
+        applied = already_applied if already_applied is not None else min(available, purchase)
+        payable = max(ZERO, purchase - applied)
+        closing = max(ZERO, available - applied)
+        return {"allocation_id": allocation_id, "offer_payment_amount": payment_amount, "bonus_percentage": bonus_percentage,
+                "monthly_bonus": monthly, "carried_forward": carried,
+                "available_bonus": available, "purchase_amount": purchase, "bonus_applied": applied,
+                "amount_payable": payable, "remaining_bonus": closing,
+                "credit_status": "already_applied" if already_applied is not None else ("active" if today <= end and months else "expired"),
+                "duration_months": duration, "months_released_or_eligible": months}
+
+
+def release_and_deduct_for_confirmed_order(cursor, order_id, email, purchase_amount, today=None):
+    """Call inside the order-status transaction after the order row is locked and before confirmation commits.
+
+    Returns None when no active allocation exists. Monthly credits are released at most once per period;
+    the order deduction is idempotent by (allocation_id, reference_type, reference_id).
+    """
+    today = today or datetime.now(timezone.get_current_timezone()).date()
+    purchase = max(ZERO, _money(purchase_amount))
+    cursor.execute("SELECT id FROM users WHERE email=%s ORDER BY id LIMIT 1 FOR UPDATE", [email])
+    user = cursor.fetchone()
+    if not user:
+        return None
+    user_id = user[0]
+    cursor.execute(
+        "SELECT id, payment_amount, bonus_percentage, total_credit, used_credit, remaining_credit, start_date, end_date, duration_months, status "
+        "FROM advance_pay_allocations WHERE user_id=%s AND UPPER(status)='ACTIVE' ORDER BY id DESC LIMIT 1 FOR UPDATE", [user_id]
+    )
+    allocation = cursor.fetchone()
+    if not allocation:
+        return None
+    allocation_id, payment_amount_raw, bonus_percentage_raw, total_raw, used_raw, remaining_raw, start, end, duration, _status = allocation
+    total, used, remaining = _money(total_raw), _money(used_raw), _money(remaining_raw)
+    if not start or not end or today < start or today > end or not duration:
+        return {"allocation_id": allocation_id, "offer_payment_amount": _money(payment_amount_raw), "bonus_percentage": _money(bonus_percentage_raw), "monthly_bonus": ZERO, "carried_forward": ZERO,
+                "available_bonus": ZERO, "purchase_amount": purchase, "bonus_applied": ZERO,
+                "amount_payable": purchase, "remaining_bonus": ZERO, "credit_status": "expired"}
+
+    months = _month_count(start, today, duration)
+    payment_amount = _money(payment_amount_raw)
+    bonus_percentage = _money(bonus_percentage_raw)
+    monthly = _monthly_bonus(payment_amount, bonus_percentage)
+    cursor.execute(
+        "SELECT id FROM advance_pay_transactions WHERE allocation_id=%s AND transaction_type='CREDIT_ADDED' "
+        "AND notes LIKE 'Initial credit allocation for offer:%%' LIMIT 1", [allocation_id]
+    )
+    legacy_preloaded = cursor.fetchone() is not None
+    released_this_run = ZERO
+    for month_index in range(months):
+        year = start.year + (start.month - 1 + month_index) // 12
+        month = (start.month - 1 + month_index) % 12 + 1
+        marker = f"MONTHLY_RELEASE:{year:04d}-{month:02d}"
+        if _has_month_marker(cursor, allocation_id, marker):
+            continue
+        amount = monthly
+        if month_index == duration - 1:
+            amount = _money(monthly * Decimal(duration) - monthly * Decimal(duration - 1))
+        if amount <= ZERO:
+            continue
+        cursor.execute(
+            "INSERT INTO advance_pay_transactions (allocation_id,user_id,amount,transaction_type,reference_id,reference_type,notes,created_at) "
+            "VALUES (%s,%s,%s,'CREDIT_ADDED',NULL,'MONTH',%s,NOW())",
+            [allocation_id, user_id, amount, marker],
+        )
+        released_this_run += amount
+        if not legacy_preloaded:
+            remaining = _money(remaining + amount)
+
+    # The ledger is cumulative for audit, but spendable credit is capped to this calendar month.
+    used_this_month = _used_this_month(cursor, allocation_id, today)
+    available = max(ZERO, monthly - used_this_month)
+
+    cursor.execute(
+        "SELECT id, amount FROM advance_pay_transactions WHERE allocation_id=%s AND reference_type='ORDER_BONUS' AND reference_id=%s LIMIT 1 FOR UPDATE",
+        [allocation_id, order_id],
+    )
+    existing = cursor.fetchone()
+    if existing:
+        applied = _money(existing[1])
+        payable = max(ZERO, purchase - applied)
+        return {"allocation_id": allocation_id, "offer_payment_amount": payment_amount, "bonus_percentage": bonus_percentage,
+                "monthly_bonus": monthly, "carried_forward": ZERO,
+                "available_bonus": available, "purchase_amount": purchase, "bonus_applied": applied,
+                "amount_payable": payable, "remaining_bonus": available,
+                "credit_status": "already_applied", "duplicate": True}
+
+    applied = min(available, purchase)
+    payable = max(ZERO, purchase - applied)
+    closing = max(ZERO, available - applied)
+    if applied > ZERO:
+        cursor.execute(
+            "INSERT INTO advance_pay_transactions (allocation_id,user_id,amount,transaction_type,reference_id,reference_type,notes,created_at) "
+            "VALUES (%s,%s,%s,'CREDIT_USED',%s,'ORDER_BONUS',%s,NOW())",
+            [allocation_id, user_id, applied, order_id, f"Bonus applied when admin confirmed order #{order_id}"],
+        )
+    cursor.execute(
+        "UPDATE advance_pay_allocations SET used_credit=%s, remaining_credit=%s, updated_at=NOW() WHERE id=%s",
+        [_money(used + applied), closing, allocation_id],
+    )
+    return {"allocation_id": allocation_id, "monthly_bonus": monthly,
+            "carried_forward": ZERO, "available_bonus": available,
+            "purchase_amount": purchase, "bonus_applied": applied, "amount_payable": payable,
+            "remaining_bonus": closing, "credit_status": "applied" if applied else "no_bonus_applied",
+            "duplicate": False, "monthly_released_now": released_this_run}

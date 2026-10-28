@@ -1,0 +1,2784 @@
+{
+  "scope": {
+    "active_tables": [
+      "a_cart",
+      "admins",
+      "advance_pay_allocations",
+      "advance_pay_offers",
+      "advance_pay_transactions",
+      "category_view",
+      "delivery_boys",
+      "notifications",
+      "salesmen",
+      "users",
+      "warehouse_delivery_boys",
+      "warehouse_salesmen",
+      "zg_category",
+      "zg_checkout",
+      "zg_discount_banners",
+      "zg_favorites",
+      "zg_location",
+      "zg_order_items",
+      "zg_order_status_history",
+      "zg_product",
+      "zg_product_images",
+      "zg_slider",
+      "zg_stock_log",
+      "zg_subcategory",
+      "zg_target_achievements",
+      "zg_target_assignments",
+      "zg_targets",
+      "zg_variant",
+      "zg_warehouse"
+    ],
+    "preserved": [
+      "admins"
+    ],
+    "to_create": [
+      "a_cart",
+      "advance_pay_allocations",
+      "advance_pay_offers",
+      "advance_pay_transactions",
+      "category_view",
+      "delivery_boys",
+      "notifications",
+      "salesmen",
+      "users",
+      "warehouse_delivery_boys",
+      "warehouse_salesmen",
+      "zg_category",
+      "zg_checkout",
+      "zg_discount_banners",
+      "zg_favorites",
+      "zg_location",
+      "zg_order_items",
+      "zg_order_status_history",
+      "zg_product",
+      "zg_product_images",
+      "zg_slider",
+      "zg_stock_log",
+      "zg_subcategory",
+      "zg_target_achievements",
+      "zg_target_assignments",
+      "zg_targets",
+      "zg_variant",
+      "zg_warehouse"
+    ]
+  },
+  "tables": {
+    "a_cart": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "cart_id",
+          "pg_type": "varchar(50)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "username",
+          "pg_type": "varchar(100)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "product_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "variant_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "qty",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "advance_pay_allocations": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "offer_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "user_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "payment_amount",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "bonus_percentage",
+          "pg_type": "numeric(5,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "duration_months",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "total_credit",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "used_credit",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "remaining_credit",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "start_date",
+          "pg_type": "date",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "end_date",
+          "pg_type": "date",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "status",
+          "pg_type": "varchar(9)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "payment_date",
+          "pg_type": "date",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "payment_reference",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "notes",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "updated_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_advance_pay_allocations_offer_id",
+          "columns": [
+            "offer_id"
+          ]
+        },
+        {
+          "name": "ix_advance_pay_allocations_user_id",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "advance_pay_allocations_ibfk_1",
+          "col": "offer_id",
+          "ref_table": "advance_pay_offers",
+          "ref_col": "id",
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "advance_pay_allocations_ibfk_2",
+          "col": "user_id",
+          "ref_table": "users",
+          "ref_col": "id",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "enum_or_json_checks": [
+        "status"
+      ]
+    },
+    "advance_pay_offers": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "offer_name",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "payment_amount",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "bonus_percentage",
+          "pg_type": "numeric(5,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "duration_months",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "total_credit",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "status",
+          "pg_type": "varchar(8)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "image_path",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "updated_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": [
+        "status"
+      ]
+    },
+    "advance_pay_transactions": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "allocation_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "user_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "amount",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "transaction_type",
+          "pg_type": "varchar(12)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "reference_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "reference_type",
+          "pg_type": "varchar(50)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "notes",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_advance_pay_transactions_allocation_id",
+          "columns": [
+            "allocation_id"
+          ]
+        },
+        {
+          "name": "ix_advance_pay_transactions_user_id",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "advance_pay_transactions_ibfk_1",
+          "col": "allocation_id",
+          "ref_table": "advance_pay_allocations",
+          "ref_col": "id",
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "advance_pay_transactions_ibfk_2",
+          "col": "user_id",
+          "ref_table": "users",
+          "ref_col": "id",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "enum_or_json_checks": [
+        "transaction_type"
+      ]
+    },
+    "category_view": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "user",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "category_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "delivery_boys": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "username",
+          "pg_type": "varchar(50)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "email",
+          "pg_type": "varchar(100)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "fullname",
+          "pg_type": "varchar(100)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "password",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "phone",
+          "pg_type": "varchar(250)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "address",
+          "pg_type": "varchar(250)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "paymentDate",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "token",
+          "pg_type": "varchar(1000)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "api_token",
+          "pg_type": "varchar(64)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "last_login",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [
+        {
+          "name": "uq_delivery_boys_username",
+          "columns": [
+            "username"
+          ]
+        },
+        {
+          "name": "uq_delivery_boys_email",
+          "columns": [
+            "email"
+          ]
+        }
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "notifications": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "customer_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "title",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "message",
+          "pg_type": "text",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "sent_by",
+          "pg_type": "varchar(100)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "is_read",
+          "pg_type": "boolean",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "read_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "recipient_type",
+          "pg_type": "varchar(20)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_notifications_customer_id",
+          "columns": [
+            "customer_id"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "notifications_ibfk_1",
+          "col": "customer_id",
+          "ref_table": "users",
+          "ref_col": "id",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "enum_or_json_checks": []
+    },
+    "salesmen": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "username",
+          "pg_type": "varchar(50)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "email",
+          "pg_type": "varchar(100)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "fullname",
+          "pg_type": "varchar(100)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "password",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "phone",
+          "pg_type": "varchar(20)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "address",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "commission_rate",
+          "pg_type": "numeric(5,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "hire_date",
+          "pg_type": "date",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "target_sales",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "token",
+          "pg_type": "varchar(64)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "api_token",
+          "pg_type": "varchar(64)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "updated_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [
+        {
+          "name": "uq_salesmen_username",
+          "columns": [
+            "username"
+          ]
+        },
+        {
+          "name": "uq_salesmen_email",
+          "columns": [
+            "email"
+          ]
+        }
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "users": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "username",
+          "pg_type": "varchar(100)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "password",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "email",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "fullname",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "shop_name",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "phone",
+          "pg_type": "varchar(20)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "city",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "category_id",
+          "pg_type": "varchar(125)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "address",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "status",
+          "pg_type": "varchar(9)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "gst",
+          "pg_type": "varchar(1)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "gst_type",
+          "pg_type": "varchar(8)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "vip_discount",
+          "pg_type": "varchar(1)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "vip_percentage",
+          "pg_type": "numeric(5,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "store_maped",
+          "pg_type": "varchar(1)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "profile_picture",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "updated_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "token",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "latitude",
+          "pg_type": "varchar(125)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "longitude",
+          "pg_type": "varchar(125)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "gst_number",
+          "pg_type": "varchar(20)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "gst_percentage",
+          "pg_type": "numeric(5,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "delivery_charges",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "color_code",
+          "pg_type": "varchar(20)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "warehouse_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "vip_from_date",
+          "pg_type": "date",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "vip_to_date",
+          "pg_type": "date",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "vip_start_date",
+          "pg_type": "date",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "vip_end_date",
+          "pg_type": "date",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [
+        {
+          "name": "uq_users_email",
+          "columns": [
+            "email"
+          ]
+        },
+        {
+          "name": "uq_users_username",
+          "columns": [
+            "username"
+          ]
+        }
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": [
+        "status",
+        "gst",
+        "gst_type",
+        "vip_discount",
+        "store_maped"
+      ]
+    },
+    "warehouse_delivery_boys": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "warehouse_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "delivery_boy_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [
+        {
+          "name": "uq_warehouse_delivery_boys_unique_warehouse_delivery_boy",
+          "columns": [
+            "warehouse_id",
+            "delivery_boy_id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ix_warehouse_delivery_boys_warehouse_id",
+          "columns": [
+            "warehouse_id"
+          ]
+        },
+        {
+          "name": "ix_warehouse_delivery_boys_delivery_boy_id",
+          "columns": [
+            "delivery_boy_id"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "warehouse_salesmen": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "warehouse_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "salesman_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [
+        {
+          "name": "uq_warehouse_salesmen_unique_warehouse_salesman",
+          "columns": [
+            "warehouse_id",
+            "salesman_id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ix_warehouse_salesmen_warehouse_id",
+          "columns": [
+            "warehouse_id"
+          ]
+        },
+        {
+          "name": "ix_warehouse_salesmen_salesman_id",
+          "columns": [
+            "salesman_id"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_category": {
+      "columns": [
+        {
+          "name": "category_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "category_name",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "category_image",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "category_active",
+          "pg_type": "boolean",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "category_id"
+      ],
+      "uniques": [],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_checkout": {
+      "columns": [
+        {
+          "name": "order_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "user",
+          "pg_type": "varchar(120)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "full_name",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "address",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "city",
+          "pg_type": "varchar(100)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "state",
+          "pg_type": "varchar(100)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "postal_code",
+          "pg_type": "varchar(20)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "country",
+          "pg_type": "varchar(100)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "phone",
+          "pg_type": "varchar(20)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "email",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "total_amount",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "order_date",
+          "pg_type": "timestamp without time zone",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "status",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "delivery_boy_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "view",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "payment_method",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "shipping_charge",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "cod_charge",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "order_id"
+      ],
+      "uniques": [],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_discount_banners": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "product_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "image_path",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_zg_discount_banners_product_id",
+          "columns": [
+            "product_id"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_discount_banners_product",
+          "col": "product_id",
+          "ref_table": "zg_product",
+          "ref_col": "product_id",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "enum_or_json_checks": []
+    },
+    "zg_favorites": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "user_id",
+          "pg_type": "varchar(125)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "product_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [
+        {
+          "name": "uq_zg_favorites_unique_user_product",
+          "columns": [
+            "user_id",
+            "product_id"
+          ]
+        }
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_location": {
+      "columns": [
+        {
+          "name": "location_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "city_name",
+          "pg_type": "varchar(100)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "location_id"
+      ],
+      "uniques": [
+        {
+          "name": "uq_zg_location_city_name",
+          "columns": [
+            "city_name"
+          ]
+        }
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_order_items": {
+      "columns": [
+        {
+          "name": "item_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "order_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "product_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "variant_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "product_name",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "variant_name",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "quantity",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "price",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "discount",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "total_price",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "item_id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_zg_order_items_order_id",
+          "columns": [
+            "order_id"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_order_status_history": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "order_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "status",
+          "pg_type": "varchar(50)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "changed_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "message",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_zg_order_status_history_order_id",
+          "columns": [
+            "order_id"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_product": {
+      "columns": [
+        {
+          "name": "product_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "code",
+          "pg_type": "varchar(250)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "stock",
+          "pg_type": "varchar(250)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "product_name",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "color",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "product_price",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "mrp",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "product_discount",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "product_description",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "product_keywords",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "subtitle",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "brand",
+          "pg_type": "varchar(100)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "youtube_link",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "share_image",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "product_details",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "additional_details",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "moq",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "set_of",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "quantity_selected",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "discount_value",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "discount_percent",
+          "pg_type": "numeric(5,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "set_contains",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "category_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "subcategory_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "top",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "hand",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "top2",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "hand2",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "heading5_tag",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "heading6_tag",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "heading7_tag",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "added",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "view",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "highlight",
+          "pg_type": "boolean",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "gst_applicable",
+          "pg_type": "varchar(1)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "gst_percentage",
+          "pg_type": "numeric(5,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "gst_price",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "has_disc",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "warehouse_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "no_discount_banner",
+          "pg_type": "varchar(1)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "disable_variants",
+          "pg_type": "varchar(1)",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "product_id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_zg_product_idx_moq",
+          "columns": [
+            "moq"
+          ]
+        },
+        {
+          "name": "ix_zg_product_idx_brand",
+          "columns": [
+            "brand"
+          ]
+        },
+        {
+          "name": "ix_zg_product_idx_youtube",
+          "columns": [
+            "youtube_link"
+          ]
+        },
+        {
+          "name": "ix_zg_product_subcategory_id",
+          "columns": [
+            "subcategory_id"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": [
+        "set_contains",
+        "no_discount_banner",
+        "disable_variants"
+      ]
+    },
+    "zg_product_images": {
+      "columns": [
+        {
+          "name": "image_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "product_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "image_path",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "main",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "image_id"
+      ],
+      "uniques": [],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_slider": {
+      "columns": [
+        {
+          "name": "slider_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "image_path",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "text_content",
+          "pg_type": "text",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "styled_text",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "styled_color",
+          "pg_type": "varchar(50)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "back",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "text_content2",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "slider_id"
+      ],
+      "uniques": [],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_stock_log": {
+      "columns": [
+        {
+          "name": "id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "variant_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "adjustment",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "reason",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "admin",
+          "pg_type": "varchar(100)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_zg_stock_log_variant_id",
+          "columns": [
+            "variant_id"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_subcategory": {
+      "columns": [
+        {
+          "name": "subcategory_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "subcategory_name",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "category_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "subcategory_image",
+          "pg_type": "varchar(500)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "subcategory_active",
+          "pg_type": "boolean",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        }
+      ],
+      "primary_key": [
+        "subcategory_id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_zg_subcategory_category_id",
+          "columns": [
+            "category_id"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_target_achievements": {
+      "columns": [
+        {
+          "name": "achievement_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "target_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "user_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "total_spent",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "order_count",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "progress_percentage",
+          "pg_type": "numeric(5,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "is_achieved",
+          "pg_type": "boolean",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "achieved_date",
+          "pg_type": "date",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "last_order_date",
+          "pg_type": "date",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "last_order_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "updated_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "achievement_id"
+      ],
+      "uniques": [
+        {
+          "name": "uq_zg_target_achievements_unique_user_target",
+          "columns": [
+            "target_id",
+            "user_id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ix_zg_target_achievements_idx_user_id",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "ix_zg_target_achievements_idx_target_id",
+          "columns": [
+            "target_id"
+          ]
+        },
+        {
+          "name": "ix_zg_target_achievements_idx_achieved",
+          "columns": [
+            "is_achieved"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    },
+    "zg_target_assignments": {
+      "columns": [
+        {
+          "name": "assignment_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "target_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "user_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "achieved_amount",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "order_count",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "status",
+          "pg_type": "varchar(8)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "achieved_date",
+          "pg_type": "date",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "updated_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "assignment_id"
+      ],
+      "uniques": [
+        {
+          "name": "uq_zg_target_assignments_unique_assignment",
+          "columns": [
+            "target_id",
+            "user_id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ix_zg_target_assignments_idx_user",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "ix_zg_target_assignments_idx_status",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "ix_zg_target_assignments_idx_achieved",
+          "columns": [
+            "achieved_date"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": [
+        "status"
+      ]
+    },
+    "zg_targets": {
+      "columns": [
+        {
+          "name": "target_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "target_name",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "category_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "target_amount",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "reward_description",
+          "pg_type": "text",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "reward_image",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "scheme_benefits",
+          "pg_type": "text",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "start_date",
+          "pg_type": "date",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "end_date",
+          "pg_type": "date",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "status",
+          "pg_type": "varchar(9)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "created_by",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "created_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "updated_at",
+          "pg_type": "timestamp without time zone",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "target_id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_zg_targets_idx_category",
+          "columns": [
+            "category_id"
+          ]
+        },
+        {
+          "name": "ix_zg_targets_idx_status",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "ix_zg_targets_idx_dates",
+          "columns": [
+            "start_date",
+            "end_date"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": [
+        "status"
+      ]
+    },
+    "zg_variant": {
+      "columns": [
+        {
+          "name": "variant_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "variant_name",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "variant_price",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "mrp",
+          "pg_type": "numeric(10,2)",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "product_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "disc",
+          "pg_type": "varchar(255)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "quantity",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "gst",
+          "pg_type": "varchar(1)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "gst_price",
+          "pg_type": "numeric(10,2)",
+          "not_null": false,
+          "identity": false,
+          "has_default": true
+        },
+        {
+          "name": "category_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "subcategory_id",
+          "pg_type": "integer",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "variant_id"
+      ],
+      "uniques": [],
+      "indexes": [
+        {
+          "name": "ix_zg_variant_product_id",
+          "columns": [
+            "product_id"
+          ]
+        },
+        {
+          "name": "ix_zg_variant_subcategory_id",
+          "columns": [
+            "subcategory_id"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "enum_or_json_checks": [
+        "gst"
+      ]
+    },
+    "zg_warehouse": {
+      "columns": [
+        {
+          "name": "warehouse_id",
+          "pg_type": "integer",
+          "not_null": true,
+          "identity": true,
+          "has_default": false
+        },
+        {
+          "name": "warehouse_name",
+          "pg_type": "varchar(100)",
+          "not_null": true,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "address",
+          "pg_type": "varchar(255)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "pincode",
+          "pg_type": "varchar(10)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "state",
+          "pg_type": "varchar(50)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "place",
+          "pg_type": "varchar(50)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "latitude",
+          "pg_type": "numeric(10,8)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        },
+        {
+          "name": "longitude",
+          "pg_type": "numeric(11,8)",
+          "not_null": false,
+          "identity": false,
+          "has_default": false
+        }
+      ],
+      "primary_key": [
+        "warehouse_id"
+      ],
+      "uniques": [],
+      "indexes": [],
+      "foreign_keys": [],
+      "enum_or_json_checks": []
+    }
+  },
+  "triggers": [
+    {
+      "table": "advance_pay_allocations",
+      "trigger": "trg_advance_pay_allocations_on_update",
+      "function": "stokit_on_update_advance_pay_allocations",
+      "columns": [
+        "updated_at"
+      ],
+      "source": "ON UPDATE current_timestamp()"
+    },
+    {
+      "table": "advance_pay_offers",
+      "trigger": "trg_advance_pay_offers_on_update",
+      "function": "stokit_on_update_advance_pay_offers",
+      "columns": [
+        "updated_at"
+      ],
+      "source": "ON UPDATE current_timestamp()"
+    },
+    {
+      "table": "salesmen",
+      "trigger": "trg_salesmen_on_update",
+      "function": "stokit_on_update_salesmen",
+      "columns": [
+        "updated_at"
+      ],
+      "source": "ON UPDATE current_timestamp()"
+    },
+    {
+      "table": "users",
+      "trigger": "trg_users_on_update",
+      "function": "stokit_on_update_users",
+      "columns": [
+        "updated_at"
+      ],
+      "source": "ON UPDATE current_timestamp()"
+    },
+    {
+      "table": "zg_target_achievements",
+      "trigger": "trg_zg_target_achievements_on_update",
+      "function": "stokit_on_update_zg_target_achievements",
+      "columns": [
+        "updated_at"
+      ],
+      "source": "ON UPDATE current_timestamp()"
+    },
+    {
+      "table": "zg_target_assignments",
+      "trigger": "trg_zg_target_assignments_on_update",
+      "function": "stokit_on_update_zg_target_assignments",
+      "columns": [
+        "updated_at"
+      ],
+      "source": "ON UPDATE current_timestamp()"
+    },
+    {
+      "table": "zg_targets",
+      "trigger": "trg_zg_targets_on_update",
+      "function": "stokit_on_update_zg_targets",
+      "columns": [
+        "updated_at"
+      ],
+      "source": "ON UPDATE current_timestamp()"
+    },
+    {
+      "table": "zg_checkout",
+      "trigger": "update_target_progress_after_order",
+      "function": "stokit_trg_update_target_progress_after_order",
+      "columns": [],
+      "source": "MariaDB trigger translated to PL/pgSQL CTE/LATERAL; requires isolated semantic validation"
+    }
+  ],
+  "counts": {
+    "tables_to_create": 28,
+    "columns": 283,
+    "identity_columns": 28,
+    "foreign_keys": 6,
+    "secondary_indexes": 29,
+    "unique_constraints": 12,
+    "triggers": 8
+  }
+}

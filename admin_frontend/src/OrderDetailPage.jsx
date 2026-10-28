@@ -1,0 +1,275 @@
+import React from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Save, Trash2, RefreshCw, MapPin, Truck, ClipboardList, History, Warehouse as WarehouseIcon, Receipt } from 'lucide-react';
+import api from './api';
+import { errorText } from './uiUtils';
+import SafeImage from './SafeImage';
+import { money, formatDateTime, statusClass, allowedStatusOptions } from './orderUtils';
+
+const ADDRESS_FIELDS = [
+  ['full_name', 'Customer name', true], ['email', 'Email'], ['phone', 'Phone'], ['address', 'Address'],
+  ['city', 'City'], ['state', 'State'], ['postal_code', 'Postal code'], ['country', 'Country'],
+];
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+function lineTotal(edit) {
+  return Number(edit.price || 0) * Number(edit.quantity || 0) - Number(edit.discount || 0);
+}
+
+function ItemsTable({ title, items, edits, canEdit, onEdit, footer }) {
+  if (!items.length) return null;
+  return (
+    <div className="ord-items-block">
+      <h3>{title}</h3>
+      <div className="table-wrap">
+        <table className="sk-table">
+          <thead><tr><th>Product</th><th>Variant</th><th>Qty</th><th>Price</th><th>Discount</th><th>Total</th></tr></thead>
+          <tbody>
+            {items.map((item) => {
+              const edit = edits[item.id] || { quantity: item.quantity, price: item.price, discount: item.discount };
+              return (
+                <tr key={item.id}>
+                  <td className="ord-product"><SafeImage className="sk-thumb ord-thumb" src={item.image_url} alt="" /><span>{item.product_name}</span></td>
+                  <td>{item.variant_name}</td>
+                  <td>{canEdit ? <input className="ord-num" type="number" min="0" step="1" aria-label={'Quantity for ' + item.product_name} value={edit.quantity} onChange={(e) => onEdit(item.id, 'quantity', e.target.value)} /> : item.quantity}</td>
+                  <td>{canEdit ? <input className="ord-num" type="number" min="0" step="0.01" aria-label={'Price for ' + item.product_name} value={edit.price} onChange={(e) => onEdit(item.id, 'price', e.target.value)} /> : money(item.price)}</td>
+                  <td>{canEdit ? <input className="ord-num" type="number" min="0" step="0.01" aria-label={'Discount for ' + item.product_name} value={edit.discount} onChange={(e) => onEdit(item.id, 'discount', e.target.value)} /> : money(item.discount)}</td>
+                  <td><strong>{money(canEdit ? lineTotal(edit) : item.total_price)}</strong></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {footer && <p className="ord-foot">{footer}</p>}
+    </div>
+  );
+}
+
+export default function OrderDetailPage({ role }) {
+  const { orderId } = useParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  const readOnly = searchParams.get('mode') !== 'edit';
+  const [detail, setDetail] = React.useState(null);
+  const [form, setForm] = React.useState({});
+  const [edits, setEdits] = React.useState({});
+  const [statusForm, setStatusForm] = React.useState({ status: '', status_message: '', delivery_boy_id: '' });
+  const [loading, setLoading] = React.useState(true);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [notice, setNotice] = React.useState('');
+
+  const hydrate = React.useCallback((data) => {
+    setDetail(data);
+    const o = data.order;
+    setForm(Object.fromEntries(ADDRESS_FIELDS.map(([key]) => [key, o[key] ?? ''])));
+    const all = [...data.items.discounted, ...data.items.non_discounted];
+    setEdits(Object.fromEntries(all.map((i) => [i.id, { quantity: i.quantity, price: i.price, discount: i.discount }])));
+    setStatusForm({ status: o.status || '', status_message: '', delivery_boy_id: o.delivery_boy_id ? String(o.delivery_boy_id) : '' });
+  }, []);
+
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('orders/' + orderId + '/detail');
+      hydrate(response.data);
+      setError('');
+    } catch (err) {
+      setDetail(null);
+      setError(errorText(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [orderId, hydrate]);
+  // oxlint-disable-next-line react/set-state-in-effect
+  React.useEffect(() => { load(); }, [load]);
+
+  function setEdit(id, field, value) {
+    setEdits((previous) => ({ ...previous, [id]: { ...previous[id], [field]: value } }));
+  }
+
+  async function saveChanges(event) {
+    event.preventDefault();
+    if (busy || !detail || readOnly) return;
+    setError(''); setNotice('');
+    if (!String(form.full_name || '').trim()) { setError('Customer name is required.'); return; }
+    if (form.email && !EMAIL_RE.test(String(form.email).trim())) { setError('Enter a valid email address.'); return; }
+    const items = [];
+    for (const [id, edit] of Object.entries(edits)) {
+      const qty = Number(edit.quantity); const price = Number(edit.price); const discount = Number(edit.discount || 0);
+      if (!Number.isInteger(qty) || qty < 0 || !Number.isFinite(price) || price < 0 || !Number.isFinite(discount) || discount < 0) {
+        setError('Quantity must be a whole number; price and discount cannot be negative.'); return;
+      }
+      if (price * qty - discount < 0) { setError('A discount is larger than its line total.'); return; }
+      items.push({ item_id: Number(id), quantity: qty, price, discount });
+    }
+    setBusy(true);
+    try {
+      const response = await api.patch('orders/' + orderId + '/detail', { ...form, items });
+      hydrate(response.data);
+      setNotice('Order details saved.' + (response.data?.recorded_total_notice ? ' ' + response.data.recorded_total_notice : ''));
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateStatus(event) {
+    event.preventDefault();
+    if (busy || !detail || readOnly) return;
+    setError(''); setNotice('');
+    if (!statusForm.status) { setError('Choose a status.'); return; }
+    const payload = { status: statusForm.status, status_message: statusForm.status_message };
+    if (isAdmin) payload.delivery_boy_id = statusForm.delivery_boy_id === '' ? null : Number(statusForm.delivery_boy_id);
+    setBusy(true);
+    try {
+      const response = await api.post('orders/' + orderId + '/status', payload);
+      hydrate(response.data);
+      setNotice(response.data?.credit_release?.message || 'Order status updated.');
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeOrder() {
+    if (busy || !detail || readOnly) return;
+    if (!window.confirm('Delete order #' + orderId + ' and all its items? This cannot be undone.')) return;
+    setBusy(true); setError('');
+    try {
+      await api.delete('orders/' + orderId + '/detail');
+      navigate('/orders', { replace: true });
+    } catch (err) {
+      setError(errorText(err));
+      setBusy(false);
+    }
+  }
+
+  if (loading && !detail) return <p className="empty" role="status">Loading order...</p>;
+  if (!detail) {
+    return (
+      <div className="sk-page">
+        {error && <p className="error" role="alert">{error}</p>}
+        <Link className="ord-back" to="/orders"><ArrowLeft size={16} /> Back to orders</Link>
+      </div>
+    );
+  }
+
+  const o = detail.order;
+  const f = detail.financials;
+  const wh = detail.warehouse;
+  const loc = detail.customer_location;
+  const statusOptions = isAdmin ? detail.status_options : allowedStatusOptions(detail.status_options, role);
+  const mapUrl = loc.latitude && loc.longitude ? 'https://www.google.com/maps?q=' + encodeURIComponent(loc.latitude + ',' + loc.longitude) : '';
+
+  return (
+    <div className="sk-page ord-page">
+      <div className="ord-head">
+        <div>
+          <Link className="ord-back" to="/orders"><ArrowLeft size={16} /> Back to orders</Link>
+          <h1><Receipt size={32} /> Order #{o.order_id}</h1>
+          <p className="sk-muted">{formatDateTime(o.order_date)} &middot; {o.payment_method} &middot; <span className={statusClass(o.status)}>{o.status}</span></p>
+        </div>
+        <div className="button-row">
+          <button type="button" onClick={load} disabled={loading || busy}><RefreshCw size={16} /> Refresh</button>
+          {isAdmin && readOnly && <button type="button" className="sk-btn-primary" onClick={() => navigate('/orders/' + orderId + '?mode=edit')}><Save size={16} /> Edit Order</button>}
+          {isAdmin && <button type="button" className="sk-btn-delete" onClick={removeOrder} disabled={busy}><Trash2 size={16} /> Delete Order</button>}
+        </div>
+      </div>
+
+      {error && <p className="error" role="alert">{error}</p>}
+      {notice && <p className="success" role="status">{notice}</p>}
+
+      <form className="sk-card sk-form" onSubmit={saveChanges}>
+        <h2><ClipboardList size={20} /> Customer &amp; Items</h2>
+        <div className="sk-form-grid">
+          {ADDRESS_FIELDS.map(([key, label, required]) => (
+            <label key={key}><span>{label}{required && <b className="sk-req">*</b>}</span>
+              <input value={form[key] ?? ''} disabled={!isAdmin || readOnly} required={Boolean(required)} onChange={(e) => setForm((previous) => ({ ...previous, [key]: e.target.value }))} /></label>
+          ))}
+        </div>
+        <p className="sk-muted">Account username: {detail.customer.username || '\u2014'} &middot; Billed GST %: {detail.customer.billed_percentage}</p>
+        <ItemsTable title="Discounted items" items={detail.items.discounted} edits={edits} canEdit={isAdmin && !readOnly} onEdit={setEdit} footer={'Subtotal: ' + money(detail.items.discounted_subtotal)} />
+        <ItemsTable title="Non-discounted items" items={detail.items.non_discounted} edits={edits} canEdit={isAdmin && !readOnly} onEdit={setEdit}
+          footer={detail.items.cart_discount_type === 'fixed'
+            ? 'Subtotal: ' + money(detail.items.non_discounted_subtotal) + ' \u2212 fixed cart discount ' + money(detail.items.cart_discount) + ' = ' + money(detail.items.non_discounted_after_discount)
+            : 'Subtotal: ' + money(detail.items.non_discounted_subtotal)} />
+        {detail.items.discounted.length + detail.items.non_discounted.length === 0 && <p className="empty">This order has no items.</p>}
+        {isAdmin && !readOnly && <div className="button-row"><button type="submit" className="sk-btn-primary" disabled={busy}><Save size={16} /> {busy ? 'Saving...' : 'Save Changes'}</button></div>}
+      </form>
+
+      <div className="sk-two-col">
+        <section className="sk-card">
+          <h2><Receipt size={20} /> Financial Summary</h2>
+          <dl className="ord-dl">
+            {f.original_items_subtotal !== undefined && <><dt>Items subtotal</dt><dd>{money(f.original_items_subtotal)}</dd></>}
+            {Number(f.product_discount || 0) > 0 && <><dt>Product discount</dt><dd>&minus; {money(f.product_discount)}</dd></>}
+            {Number(f.cart_discount || 0) > 0 && <><dt>Cart discount (fixed)</dt><dd>&minus; {money(f.cart_discount)}</dd></>}
+            <dt>Subtotal after cart discount</dt><dd>{money(f.subtotal)}</dd>
+            <dt>GST{f.gst_source === 'snapshot' ? ' (recorded at order time)' : ''}</dt><dd>{money(f.gst_amount)}</dd>
+            <dt>Total with GST</dt><dd>{money(f.total_with_gst)}</dd>
+            <dt>Delivery charges</dt><dd>{money(f.delivery_charges)}</dd>
+            <dt>VIP discount ({f.vip_discount_percent}%)</dt><dd>&minus; {money(f.vip_discount)}</dd>
+            <dt>Monthly bonus</dt><dd>{money(f.monthly_bonus)}</dd>
+            <dt>Carried-forward bonus</dt><dd>{money(f.carried_forward_bonus)}</dd>
+            <dt>Available bonus</dt><dd>{money(f.available_bonus)}</dd>
+            <dt>Bonus applied</dt><dd>&minus; {money(f.credit_release)}</dd>
+            <dt>Remaining bonus</dt><dd>{money(f.remaining_bonus)}</dd>
+            <dt className="ord-grand">Amount payable</dt><dd className="ord-grand">{money(f.amount_payable ?? f.grand_total)}</dd>
+          </dl>
+          {f.payable_reliably_derived ? <p className="sk-muted">Recorded order amount (derived payable amount, from recorded order data): {money(f.recorded_order_amount)}.</p> : <p className="sk-muted">Recorded order amount: the final payable amount cannot be reconstructed reliably from this order&rsquo;s saved records{f.payable_fallback_reason ? ' ('  + f.payable_fallback_reason + ')' : ''}, so the stored subtotal after cart discount is shown: {money(o.total_amount)}.</p>}
+          {f.vip_not_applied_reason === 'cart_discount_applied' && <p className="sk-muted">VIP discount is not shown: this order carries a cart discount, and the two promotions are never combined at checkout.</p>}
+          {f.cart_discount_source && ['unreliable_preserved', 'stored_above_items', 'no_recorded_total'].includes(f.cart_discount_source) && <p className="sk-muted">The original cart discount of this order cannot be established reliably from its saved records, so the stored amount is shown as recorded.</p>}
+          <p className="sk-muted">Available and remaining bonus show the current month&rsquo;s balance, not the balance on the day this order was placed.</p><p className="sk-muted">{f.bonus_credit_status === "already_applied" ? "Bonus deduction is already recorded for this order." : "Bonus is a preview until an administrator confirms the order by changing its status to Processing."}</p>
+        </section>
+
+        <section className="sk-card">
+          <h2><WarehouseIcon size={20} /> Warehouse &amp; Location</h2>
+          {wh.name ? (
+            <dl className="ord-dl">
+              <dt>Warehouse</dt><dd>{wh.name}</dd>
+              <dt>Address</dt><dd>{[wh.address, wh.place, wh.state, wh.pincode].filter(Boolean).join(', ') || '\u2014'}</dd>
+            </dl>
+          ) : <p className="sk-muted">No warehouse is linked to this customer.</p>}
+          {mapUrl ? <a className="ord-view" href={mapUrl} target="_blank" rel="noopener noreferrer"><MapPin size={16} /> View customer location</a> : <p className="sk-muted">No customer coordinates saved.</p>}
+        </section>
+      </div>
+
+      <form className="sk-card sk-form" onSubmit={updateStatus}>
+        <h2><Truck size={20} /> {readOnly ? "Order Status" : "Update Status"}</h2>
+        <div className="sk-form-grid">
+          <label><span>Status</span>
+            <select value={statusForm.status} disabled={readOnly} onChange={(e) => setStatusForm({ ...statusForm, status: e.target.value })} required>
+              <option value="" disabled>Select status</option>
+              {statusOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select></label>
+          {isAdmin && (
+            <label><span>Delivery boy</span>
+              <select value={statusForm.delivery_boy_id} disabled={readOnly} onChange={(e) => setStatusForm({ ...statusForm, delivery_boy_id: e.target.value })}>
+                <option value="">Not assigned</option>
+                {detail.delivery_boys.map((b) => <option key={b.id} value={b.id}>{b.fullname}</option>)}
+              </select></label>
+          )}
+        </div>
+        <label><span>Message to record <em>(optional)</em></span>
+          <textarea rows="3" maxLength={2000} value={statusForm.status_message} disabled={readOnly} onChange={(e) => setStatusForm({ ...statusForm, status_message: e.target.value })} /></label>
+        {!readOnly && <div className="button-row"><button type="submit" className="sk-btn-primary" disabled={busy || !statusForm.status}><Save size={16} /> Update Status</button></div>}
+      </form>
+
+      <section className="sk-card">
+        <h2><History size={20} /> Status History</h2>
+        {detail.history.length === 0 ? <p className="sk-muted">No status changes recorded yet.</p> : (
+          <ul className="ord-history">
+            {detail.history.map((h, index) => (
+              <li key={index}><span className={statusClass(h.status)}>{h.status}</span> <span className="sk-muted">{formatDateTime(h.changed_at)}</span>{h.message && <p>{h.message}</p>}</li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}

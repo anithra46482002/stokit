@@ -1,0 +1,396 @@
+﻿"""Flutter cart and notification endpoints ported from the original PHP handlers."""
+import hashlib
+import secrets
+from datetime import datetime
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+from django.conf import settings
+from django.db import transaction
+from django.utils import timezone
+
+from accounts import services
+from adminapi.cart_discount import calculate_cart_discount, load_cart_discount_config
+from legacydb.discount_rules import customer_has_vip, product_has_discount
+from legacydb.gst_rules import calculate_gst_amount
+from accounts.models import DeviceToken
+from .common import (as_dict, base_url, legacy_image_url, execute, fetchall, fetchone, get_int, jr, json_body,
+                     legacy_view, lock_user_cart)
+from .views_finance import current_available_credit
+
+
+MAX_CART_QTY = 100000  # upper bound for a single cart line
+
+
+def _php_round(value, places=2):
+    from decimal import Decimal, ROUND_HALF_UP
+    quantum = Decimal("1").scaleb(-places)
+    return float(Decimal(str(value)).quantize(quantum, rounding=ROUND_HALF_UP))
+
+
+@legacy_view()
+def product_api_cart(request):
+    if request.method != "POST":
+        return jr({"status": "error", "message": "Only POST method allowed"}, 405)
+    data = as_dict(json_body(request))
+    if not isinstance(data.get("variants"), list) or data.get("product_id") is None:
+        return jr({"status": "error", "message": "Invalid JSON body"}, 400)
+    try:
+        product_id = int(data["product_id"])
+    except (TypeError, ValueError):
+        product_id = 0
+    if product_id <= 0:
+        return jr({"status": "error", "message": "Invalid JSON body"}, 400)
+    username = request.legacy_user["username"]
+    if not fetchone("SELECT product_id FROM zg_product WHERE product_id=%s AND view='1' LIMIT 1", [product_id]):
+        return jr({"status": "error", "message": "Product not found"}, 404)
+    # Products without variant rows are listed by /product-api with variant id "0"; only those may use it.
+    has_variants = fetchone("SELECT 1 AS x FROM zg_variant WHERE product_id=%s LIMIT 1", [product_id]) is not None
+    cart_id = secrets.randbelow(2_147_483_646) + 1
+    saved = 0
+    with transaction.atomic():
+        lock_user_cart(username)
+        for variant in data["variants"]:
+            if not isinstance(variant, dict) or variant.get("variant_id") is None or variant.get("qty") is None:
+                continue
+            try:
+                variant_id, qty = int(variant["variant_id"]), int(variant["qty"])
+            except (TypeError, ValueError):
+                continue
+            if variant_id < 0 or qty <= 0 or qty > MAX_CART_QTY:
+                continue
+            if variant_id == 0:
+                if has_variants:
+                    continue
+            elif not fetchone("SELECT 1 AS x FROM zg_variant WHERE variant_id=%s AND product_id=%s LIMIT 1",
+                              [variant_id, product_id]):
+                continue
+            existing = fetchone("SELECT qty FROM a_cart WHERE username=%s AND product_id=%s AND variant_id=%s "
+                                "LIMIT 1 FOR UPDATE", [username, product_id, variant_id])
+            if existing:
+                # Adding the same variant again increases its quantity (one cart line per variant).
+                affected = execute("UPDATE a_cart SET qty=LEAST(qty+%s, %s) "
+                                   "WHERE username=%s AND product_id=%s AND variant_id=%s",
+                                   [qty, MAX_CART_QTY, username, product_id, variant_id])
+            else:
+                affected = execute(
+                    "INSERT INTO a_cart (cart_id, username, product_id, variant_id, qty, created_at) "
+                    "VALUES (%s, %s, %s, %s, %s, NOW())",
+                    [cart_id, username, product_id, variant_id, qty],
+                )
+            saved += 1 if affected else 0
+    if saved == 0:
+        # Never report success when nothing was written (Flutter treats status != "success" as a failure).
+        return jr({"status": "error", "message": "No valid items were added to the cart", "inserted_items": 0}, 400)
+    return jr({"status": "success", "message": "Cart data saved", "cart_id": cart_id, "inserted_items": int(saved)})
+
+def _cart_group_totals(items):
+    return {
+        "total_price": _php_round(sum(float(x["sub_total"]) for x in items)),
+        "subtotal": _php_round(sum(float(x["discounted_subtotal"]) for x in items)),
+        "discount_amount": _php_round(sum(float(x["discount_amount"]) for x in items)),
+        "avg_discount": _php_round(sum(float(x["discount_percent"]) for x in items) / len(items)) if items else 0,
+        "count": len(items),
+    }
+
+
+def _product_groups(items, fallback_key, product_discount=None, gross_subtotal=False):
+    """Group cart lines into the {group key: {items, total_price, product_discount, subtotal}} map Flutter reads.
+
+    Flutter's cart page parses each group key as a product id and sends it back as `product_id` in cart_action,
+    so the key must be the real product id (the legacy fixed keys "1"/"2" made every line look like product 1 or 2
+    and left cart_action unable to tell products that share variant 0 apart). Lines without an internal
+    `_product_id` marker keep the legacy fixed key. The marker never reaches the response.
+
+    Flutter's group footer "Total :" shows the group `subtotal`. With `gross_subtotal` (the cart-promotion group) that
+    value is the product subtotal BEFORE the fixed cart discount: the discount is a cart-level amount that reaches the
+    customer through the summary (`cart_discount_amount`, payable amount), never by reducing a product's total.
+    """
+    grouped = {}
+    for item in items:
+        pid = item.get("_product_id")
+        grouped.setdefault(str(pid) if pid else fallback_key, []).append(
+            {key: value for key, value in item.items() if key != "_product_id"})
+    if not grouped:
+        grouped[fallback_key] = []
+    groups = {}
+    for key, members in grouped.items():
+        totals = _cart_group_totals(members)
+        groups[key] = {"items": members, "total_price": totals["total_price"],
+            "product_discount": totals["avg_discount"] if product_discount is None else product_discount,
+            "subtotal": totals["total_price"] if gross_subtotal else totals["subtotal"]}
+    return groups
+
+def _decimal_money(value):
+    try:
+        amount = Decimal(str(value if value is not None else 0))
+    except (InvalidOperation, TypeError, ValueError):
+        amount = Decimal("0.00")
+    if not amount.is_finite():
+        amount = Decimal("0.00")
+    return max(Decimal("0.00"), amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _calculate_credit_totals(order_total, available_credit):
+    """Return (credit applied, payable amount, 0.0) using Decimal arithmetic.
+
+    `available_credit` must be the customer's remaining credit for the CURRENT calendar month (from the shared
+    credit service). Unused credit expires at month end, so the legacy third value (carry-forward) is always 0.0.
+    """
+    order_total = _decimal_money(order_total)
+    available_credit = _decimal_money(available_credit)
+    credit_applied = min(available_credit, order_total)
+    payable_amount = max(Decimal("0.00"), order_total - credit_applied)
+    return float(credit_applied), float(payable_amount), 0.0
+
+
+def _build_cart_response(username, discounted, undiscounted, delivery, vip_applied=False, vip_percentage=0, credit_release=0.0, available_credit=None, carried_forward=0.0, cart_discount_config=None):
+    available = _cart_group_totals(discounted)
+    raw_unavailable = _cart_group_totals(undiscounted)
+    # The cart promotion comes ONLY from the persisted admin Cart Discount Settings (read fresh, never cached, no
+    # hardcoded fallback). A storage failure propagates to legacy_view's sanitized database-error response.
+    config = cart_discount_config if cart_discount_config is not None else load_cart_discount_config()
+    mov_enabled = bool(config["enabled"])
+    mov_min_order_value = float(config["minimum_subtotal"])
+    cart_discount_fixed = float(config["fixed_discount_amount"])  # fixed currency amount (legacy field name kept)
+    current = raw_unavailable["total_price"]
+    # Shared rule (adminapi.cart_discount): enabled, no VIP stacking, eligible subtotal STRICTLY above the minimum,
+    # fixed amount capped at the eligible subtotal; lines that already carry a discount are never eligible.
+    promo = calculate_cart_discount(
+        [{"amount": x["sub_total"], "line_discount": x.get("discount_amount", 0)} for x in undiscounted],
+        mov_enabled, config["minimum_subtotal"], config["fixed_discount_amount"], vip_applied=vip_applied)
+    cart_discount = promo["applied_discount"]
+    eligible = cart_discount > 0
+    # The promotion is a FIXED amount, so it has no percentage: Flutter renders `discount_percent` under the product
+    # and `cart_discount_percent` as a percentage, so both stay 0.0 (type float kept). The amount is carried by
+    # `discount_amount` / `cart_discount_amount` / `cart_discount`.
+    cart_pct = 0.0
+    final_unavailable = []
+    for item, share in zip(undiscounted, promo["line_discounts"]):
+        item = dict(item)
+        line_total = Decimal(str(item["sub_total"]))
+        item["discounted_subtotal"] = _php_round(line_total - share)
+        item["discount_amount"] = float(share)
+        item["discount_percent"] = 0.0
+        final_unavailable.append(item)
+    unavailable = _cart_group_totals(final_unavailable)
+    cart_discount_amount = float(cart_discount)  # exactly the applied discount; the line shares above sum to it
+    original_total = _php_round(available["total_price"] + raw_unavailable["total_price"])
+    items_subtotal = _php_round(available["subtotal"] + raw_unavailable["subtotal"])
+    original_price = _php_round(available["subtotal"] + unavailable["subtotal"])
+    product_discount = _php_round(available["discount_amount"] + raw_unavailable["discount_amount"])
+    total_qty = sum(int(x["quantity"]) for x in discounted + final_unavailable)
+    # GST per line = configured per-unit GST amount x quantity x the customer's saved GST percentage / 100
+    # (legacydb.gst_rules). It never depends on the selling price; each line is already rounded to cents.
+    gst = _php_round(sum((Decimal(str(x.get("gst_amount", 0) or 0)) for x in discounted + final_unavailable), Decimal("0")))
+    # `credit_release` is the monthly allowance from the customer's allocation; `available_credit` is what is
+    # still spendable this calendar month (this month's allocation + the unused balance carried forward from earlier
+    # months - this month's usage). There is no configured fallback amount.
+    credit_release = float(_decimal_money(credit_release))
+    carried_forward_credit = float(_decimal_money(carried_forward))  # already included in available_credit
+    available_credit = float(_decimal_money(credit_release if available_credit is None else available_credit))
+    vip_pct = max(0.0, float(vip_percentage or 0)) if vip_applied else 0.0
+    vip_discount = _php_round(original_price * vip_pct / 100)
+    delivery_amount = _php_round(float(delivery))
+    order_total_before_credit = float(_decimal_money(
+        Decimal(str(original_price)) + Decimal(str(gst)) + Decimal(str(delivery_amount)) - Decimal(str(vip_discount))
+    ))
+    credit_applied, payable_amount, carry_forward = _calculate_credit_totals(
+        order_total_before_credit, available_credit
+    )
+    if total_qty == 0:
+        carry_forward = 0.0
+    final_total = payable_amount
+    minimum_order_value = float(_decimal_money(settings.STOKIT_MIN_ORDER_VALUE))  # Pre-credit checkout eligibility rule.
+    minimum_order_remaining = float(_decimal_money(Decimal(str(minimum_order_value)) - Decimal(str(order_total_before_credit))))
+    return {"status": "success", "user": username, "cart_items": {
+        "discount_available": _product_groups(discounted, "1"),
+        "discount_not_available": _product_groups(final_unavailable, "2", cart_pct if eligible else 0, gross_subtotal=True),
+        "final_summary": {"items_subtotal": items_subtotal, "discount_not_available_total": unavailable["subtotal"],
+            "discount_available_total": available["subtotal"], "original_total_price": original_total,
+            "product_discount_amount": product_discount, "cart_discount_amount": cart_discount_amount,
+            "original_price": original_price, "GST": gst, "credit_release": credit_applied, "monthly_credit_release": credit_release,
+            "carried_forward_from_previous_month": carried_forward_credit, "available_credit": available_credit,
+            "credit_applied": credit_applied, "carry_forward_to_next_month": carry_forward, "payable_amount": payable_amount, "total_billed_amount": payable_amount,
+            "vip_discount": vip_discount, "delivery": delivery_amount, "MOK": minimum_order_value,
+            "MOK-diff": minimum_order_remaining, "order_total_before_credit": order_total_before_credit,
+            "final_total_price": final_total, "total_cart_items": total_qty},
+        "discount": {"type": "VIP", "disc_percentage": vip_pct, "disc_amount": vip_discount},
+        "mov": {"enabled": mov_enabled, "min_order_value": mov_min_order_value, "current_order_value": current,
+            "difference": _php_round(current - mov_min_order_value), "cart_discount": cart_discount_fixed,
+            "cart_discount_applied": eligible, "cart_discount_percent": cart_pct, "cart_discount_amount": cart_discount_amount},
+    }}
+
+
+@legacy_view()
+def cart_api_test(request):
+    if request.method != "GET":
+        return jr({"status": "error", "message": "Method not allowed"}, 405)
+    username = request.legacy_user["username"]
+    user = fetchone("SELECT id, email, gst_percentage, delivery_charges, vip_discount, vip_percentage FROM users WHERE username=%s LIMIT 1", [username])
+    if not user:
+        return jr({"status": "error", "message": "User not found"}, 404)
+    monthly_credit, carried_forward_credit, remaining_credit = current_available_credit(user)
+    delivery = float(user.get("delivery_charges") or 0)
+    vip_applied = customer_has_vip(user.get("vip_discount"), user.get("vip_percentage"))
+    vip_percentage = float(user.get("vip_percentage") or 0) if vip_applied else 0.0
+    rows = fetchall(
+        "SELECT c.cart_id,c.product_id,c.variant_id,c.qty,c.created_at,p.product_name,p.has_disc,"
+        "p.discount_percent,p.discount_value,p.product_discount,p.gst_applicable AS product_gst_applicable,p.gst_price AS product_gst_price,"
+        "COALESCE(v.variant_name, CASE WHEN c.variant_id=0 THEN '' END) AS variant_name,"
+        # Products without variant rows are carted as variant 0 and priced from the product itself.
+        "COALESCE(v.variant_price, CASE WHEN c.variant_id=0 THEN p.product_price END) AS variant_price,"
+        "COALESCE(v.quantity, CASE WHEN c.variant_id=0 THEN 1 END) AS variant_quantity,"
+        "COALESCE(v.gst, 'N') AS variant_gst, CASE WHEN c.variant_id=0 THEN COALESCE(p.gst_price, 0) ELSE COALESCE(v.gst_price, 0) END AS variant_gst_price,"
+        "(SELECT image_path FROM zg_product_images WHERE product_id=p.product_id AND main='1' LIMIT 1) AS main_image "
+        "FROM a_cart c LEFT JOIN zg_product p ON c.product_id=p.product_id "
+        "LEFT JOIN zg_variant v ON c.variant_id=v.variant_id WHERE c.username=%s ORDER BY c.cart_id ASC",
+        [username],
+    )
+    discounted, undiscounted = [], []
+    for row in rows:
+        if row["product_name"] is None or row["variant_name"] is None:
+            continue
+        price, qty = float(row["variant_price"] or 0), int(row["qty"] or 0)
+        subtotal = _php_round(price * qty)
+        pct = 0.0
+        if int(row["has_disc"] or 0) == 1:
+            p, val = float(row["discount_percent"] or 0), float(row["discount_value"] or 0)
+            pct = p if p > 0 else ((val / price) * 100 if val > 0 and price > 0 else 0)
+        pct = min(100.0, max(0.0, pct))
+        has_other_discount = product_has_discount(
+            has_disc=row["has_disc"],
+            discount_percent=row["discount_percent"],
+            discount_value=row["discount_value"],
+            product_discount=row["product_discount"],
+        )
+        discounted_subtotal = _php_round(subtotal * (1 - pct / 100))
+        item = {"_product_id": int(row["product_id"]),
+            "product_name": row["product_name"], "variant": row["variant_name"], "variant_id": int(row["variant_id"]),
+            "stock_status": ("in_stock" if int(row["variant_id"] or 0) == 0 or
+                             (int(row["variant_quantity"] or 0) >= qty and int(row["variant_quantity"] or 0) > 0)
+                             else "out_of_stock"),
+            "price": price, "quantity": qty, "sub_total": subtotal, "discounted_subtotal": discounted_subtotal,
+            "discount_amount": _php_round(subtotal - discounted_subtotal), "discount_percent": pct,
+            # Customer percentage = the authenticated customer's saved users.gst_percentage; never from the request.
+            "gst_amount": float(calculate_gst_amount(
+                quantity=qty,
+                product_gst_applicable=row.get("product_gst_applicable"),
+                variant_gst=row.get("variant_gst"), is_variant=int(row.get("variant_id") or 0) != 0,
+                configured_amount=row.get("variant_gst_price"),
+                customer_gst_percentage=user.get("gst_percentage"),
+            )),
+            "stock_status": "in_stock" if int(row["variant_quantity"] or 0) > 0 else "out_of_stock",
+            # Product main image (variants have no image column of their own); same helper and fallback as checkout.
+            "image_url": legacy_image_url(row.get("main_image"), request, "https://projects.teleber.com/stokit/pro-imgs/default.jpg"),
+            "added_date": row["created_at"]}
+        (discounted if has_other_discount else undiscounted).append(item)
+    return jr(_build_cart_response(
+        username, discounted, undiscounted, delivery,
+        vip_applied=vip_applied, vip_percentage=vip_percentage,
+        credit_release=monthly_credit, available_credit=remaining_credit, carried_forward=carried_forward_credit,
+    ))
+
+
+@legacy_view()
+def notify(request):
+    if request.method != "POST":
+        return jr({"status": False, "message": "Only POST method allowed"}, 405)
+    device_token = request.META.get("HTTP_DEVICE_TOKEN", "").strip()
+    if not device_token:
+        return jr({"status": False, "message": "Device token missing"}, 400)
+    user_id = request.legacy_user["id"]
+    digest = hashlib.sha256(device_token.encode("utf-8")).hexdigest()
+    now = timezone.now()
+    DeviceToken.objects.update_or_create(user_id=user_id, device_token_hash=digest,
+        defaults={"device_token": device_token, "updated_at": now})
+    return jr({"status": True, "message": "Tokens saved successfully"})
+
+
+@legacy_view()
+def noti_list(request):
+    username = request.legacy_user["username"]
+    user = fetchone("SELECT id FROM users WHERE username=%s LIMIT 1", [username])
+    if not user:
+        return jr({"error": "User not found"}, 404)
+    uid = int(user["id"])
+    if request.method == "PUT" and request.GET.get("action") == "mark_read":
+        data = as_dict(json_body(request))
+        if data.get("notification_id") is not None:
+            count = execute("UPDATE notifications SET is_read=TRUE, read_at=NOW() WHERE id=%s AND (customer_id IS NULL OR customer_id=%s)",
+                            [int(data["notification_id"]), uid])
+            return jr({"success": True, "message": "Notification marked as read"} if count else {"error": "Notification not found"}, 200 if count else 404)
+        if data.get("mark_all"):
+            execute("UPDATE notifications SET is_read=TRUE, read_at=NOW() WHERE customer_id IS NULL OR customer_id=%s", [uid])
+            return jr({"success": True, "message": "All notifications marked as read"})
+        return jr({"error": "Invalid request. Provide notification_id or mark_all"}, 400)
+    if request.method != "GET":
+        return jr({"error": "Method not allowed"}, 405)
+    skip = max(0, get_int(request, "skip", 0))
+    limit = min(100, max(1, get_int(request, "limit", 30)))
+    filter_read = get_int(request, "filter_read", -1)
+    params = [uid]
+    where = "(customer_id IS NULL OR customer_id=%s)"
+    if filter_read in (0, 1):
+        where += " AND is_read=%s"
+        params.append(bool(filter_read))
+    rows = fetchall(f"SELECT id,title AS heading,message,is_read,created_at,recipient_type,sent_by FROM notifications WHERE {where} ORDER BY created_at DESC LIMIT %s OFFSET %s",
+                    params + [limit, skip])
+    total = fetchone("SELECT COUNT(*) AS total FROM notifications WHERE customer_id IS NULL OR customer_id=%s", [uid])
+    counts = fetchone("SELECT SUM(CASE WHEN is_read=TRUE THEN 1 ELSE 0 END) AS read_count,SUM(CASE WHEN is_read=FALSE THEN 1 ELSE 0 END) AS unread_count FROM notifications WHERE customer_id IS NULL OR customer_id=%s", [uid]) or {}
+    return jr({"notifications": [{"id": int(r["id"]), "heading": r["heading"], "message": r["message"],
+        "is_read": bool(r["is_read"]), "created_at": r["created_at"], "sent_by": r["sent_by"], "recipient_type": r["recipient_type"]} for r in rows],
+        "total": int(total["total"] if total else 0), "skip": skip, "limit": limit,
+        "read": int(counts.get("read_count") or 0), "unread": int(counts.get("unread_count") or 0)})
+
+
+@legacy_view()
+def notification_action(request):
+    if request.method != "POST":
+        return jr({"status": "error", "message": "Only POST allowed"}, 405)
+    data = as_dict(json_body(request))
+    if data.get("message_id") is None:
+        return jr({"status": "error", "message": "message_id is required"}, 400)
+    try:
+        mid = int(data["message_id"])
+    except (TypeError, ValueError):
+        return jr({"status": "error", "message": "message_id is required"}, 400)
+    row = fetchone("SELECT title,message FROM notifications WHERE id=%s AND (customer_id IS NULL OR customer_id=%s)",
+                   [mid, request.legacy_user["id"]])
+    if not row:
+        return jr({"status": "error", "message": "Notification not found"}, 404)
+    return jr({"status": "success", "heading": row["title"], "body": row["message"]})
+
+@legacy_view()
+def checkout(request):
+    """Live checkout preview; unlike the PHP sample response, never returns demo records."""
+    username = request.legacy_user['username']
+    user = fetchone('SELECT id,profile_picture,shop_name,fullname,address,city,created_at,username,phone,email,status,vip_discount,vip_percentage,store_maped,delivery_charges,gst_percentage FROM users WHERE username=%s LIMIT 1', [username])
+    if not user:
+        return jr({'success': False, 'message': 'User not found'}, 404)
+    rows = fetchall('SELECT c.product_id,c.variant_id,c.qty,c.created_at,p.product_name,p.product_discount,p.gst_applicable AS product_gst_applicable,CASE WHEN c.variant_id=0 THEN COALESCE(p.gst_price, 0) ELSE COALESCE(v.gst_price, 0) END AS variant_gst_price,COALESCE(v.gst, \'N\') AS variant_gst,COALESCE(v.variant_price, CASE WHEN c.variant_id=0 THEN p.product_price END) AS variant_price,COALESCE(v.quantity, CASE WHEN c.variant_id=0 THEN 1 END) AS stock_qty,(SELECT image_path FROM zg_product_images WHERE product_id=p.product_id AND main=\'1\' LIMIT 1) AS image_path FROM a_cart c LEFT JOIN zg_product p ON c.product_id=p.product_id LEFT JOIN zg_variant v ON c.variant_id=v.variant_id WHERE c.username=%s ORDER BY c.cart_id ASC', [username])
+    items, total_qty, total_price, total_gst = [], 0, 0.0, Decimal('0.00')
+    for row in rows:
+        price = float(row['variant_price'] or 0)
+        discount = float(row['product_discount'] or 0)
+        qty = max(0, int(row['qty'] or 0))
+        line_gst = float(calculate_gst_amount(quantity=qty, product_gst_applicable=row.get('product_gst_applicable'), variant_gst=row.get('variant_gst'), is_variant=int(row.get('variant_id') or 0) != 0, configured_amount=row.get('variant_gst_price'), customer_gst_percentage=user.get('gst_percentage')))
+        items.append({'id': int(row['product_id'] or 0), 'product_name': row['product_name'] or '',
+            'image_url': legacy_image_url(row['image_path'], request, 'https://projects.teleber.com/stokit/pro-imgs/default.jpg'),
+            'price': price, 'discount': discount, 'quantity': qty, 'gst_amount': line_gst,
+            'stock_status': 'in_stock' if int(row['stock_qty'] or 0) > 0 else 'out_of_stock',
+            'added_date': row['created_at']})
+        total_qty += qty
+        total_price += (price - price * discount / 100) * qty
+        total_gst += Decimal(str(line_gst))
+    picture = user['profile_picture'] or 'https://www.w3schools.com/howto/img_avatar.png'
+    created = user['created_at'].strftime('%Y-%m-%d') if user['created_at'] else '1970-01-01'
+    profile = {'profile_picture_url': legacy_image_url(picture, request, picture), 'shop_name': user['shop_name'] or '',
+        'owner': user['fullname'] or '', 'location': f"{user['address'] or ''}, {user['city'] or ''}",
+        'account_created_on': created, 'username': user['username'], 'mobile': user['phone'],
+        'email': user['email'], 'account_status': (user['status'] or '').lower(),
+        'VIP': user['vip_discount'], 'VIP_per': float(user['vip_percentage'] or 0), 'store_maped': user['store_maped']}
+    return jr({'success': True, 'checkout_data': {'profile': profile, 'cart_items': items,
+        'cart_summary': {'total_items': len(items), 'total_quantity': total_qty,
+            'total_price': round(total_price), 'gst_amount': float(total_gst.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+            'total_with_gst': round(total_price + float(total_gst), 2),
+            'currency': 'INR', 'delivery': str(user['delivery_charges'] or 0)}}})

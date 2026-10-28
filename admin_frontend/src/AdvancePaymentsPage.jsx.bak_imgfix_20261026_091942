@@ -1,0 +1,155 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from './api';
+import './AdvancePaymentsPage.css';
+import { DEFAULT_ADVANCE_OFFER_MONTHS, isValidAdvanceOfferDuration } from './advanceOfferValidation.js';
+
+export default function AdvancePaymentsPage({ formOnly = false }) {
+  const navigate = useNavigate();
+  const [rows, setRows] = React.useState([]);
+  const [form, setForm] = React.useState(formOnly ? { offer_name: '', payment_amount: '', bonus_percentage: '', duration_months: String(DEFAULT_ADVANCE_OFFER_MONTHS), status: 'ACTIVE' } : null);
+  const [error, setError] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+
+  const load = React.useCallback(async () => {
+    try {
+      const response = await api.get('advance-payments');
+      setRows(response.data.results || []);
+    } catch (e) {
+      setError(e.response?.data?.detail || e.message || 'Unable to load offers');
+    }
+  }, []);
+
+  // oxlint-disable-next-line react/set-state-in-effect
+  React.useEffect(() => { load(); }, [load]);
+
+  const amount = Number(form?.payment_amount) || 0;
+  const pct = Number(form?.bonus_percentage) || 0;
+  const months = Number(form?.duration_months) || 0;
+  const monthly = amount * pct / 100;
+  const money = (value) => new Intl.NumberFormat('en-IN', {
+    style: 'currency', currency: 'INR', minimumFractionDigits: 2,
+  }).format(value || 0);
+
+  async function save(event) {
+    event.preventDefault();
+    const duration = Number(form?.duration_months);
+    if (!isValidAdvanceOfferDuration(duration)) {
+      setError('Duration must be at least 12 months.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    const data = new FormData(event.currentTarget);
+    // The edit endpoint needs the offer ID in the multipart body as well as the URL.
+    if (form.id) data.set('id', String(form.id));
+    try {
+      await api.request({
+        method: form.id ? 'PATCH' : 'POST',
+        url: 'advance-payments' + (form.id ? '?id=' + form.id : ''),
+        data,
+        headers: { 'Content-Type': undefined },
+      });
+      setForm(null);
+      await load();
+      if (formOnly) navigate('/advance-payments');
+    } catch (e) {
+      const body = e.response?.data;
+      const fieldErrors = body?.errors;
+      const details = Array.isArray(fieldErrors)
+        ? fieldErrors.join(' · ')
+        : fieldErrors && typeof fieldErrors === 'object'
+          ? Object.entries(fieldErrors).map(([field, message]) => `${field}: ${Array.isArray(message) ? message.join(', ') : String(message)}`).join(' · ')
+          : '';
+      setError(body?.detail || details || e.message || 'Save failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(offer) {
+    if (!window.confirm(`Delete offer "${offer.offer_name}"? This cannot be undone.`)) return;
+    try {
+      await api.delete('advance-payments', { params: { id: offer.id } });
+      await load();
+    } catch (e) {
+      setError(e.response?.data?.detail || e.message || 'Delete failed');
+    }
+  }
+
+  function offerForm(editing) {
+    return (
+      <section className="apo-modal apo-new-form">
+        <h2>{editing.id ? 'Edit Advance Pay Offer' : 'Add Advance Pay Offer'}</h2>
+        <form onSubmit={save}>
+          <div className="apo-grid">
+            <label className="wide">Offer Name *
+              <input name="offer_name" required value={form.offer_name || ''} onChange={e => setForm({ ...form, offer_name: e.target.value })} placeholder="Example: 10% Monthly Bonus for 12 Months" />
+            </label>
+            <label>Payment Amount (₹) *
+              <input name="payment_amount" type="number" min="0.01" step="0.01" required value={form.payment_amount || ''} onChange={e => setForm({ ...form, payment_amount: e.target.value })} />
+            </label>
+            <label>Bonus Percentage (%) *
+              <input name="bonus_percentage" type="number" min="0" max="100" step="0.01" required value={form.bonus_percentage ?? ''} onChange={e => setForm({ ...form, bonus_percentage: e.target.value })} />
+            </label>
+            <label>Duration (Months) *
+              <input name="duration_months" type="number" min="12" step="1" required value={form.duration_months || String(DEFAULT_ADVANCE_OFFER_MONTHS)} onChange={e => setForm({ ...form, duration_months: e.target.value })} />
+            </label>
+            <label>Status *
+              <select name="status" value={form.status || 'ACTIVE'} onChange={e => setForm({ ...form, status: e.target.value })}>
+                <option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option>
+              </select>
+            </label>
+            <label className="wide">Offer Image
+              <input name="offer_image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" />
+              <small>JPG, PNG, GIF or WebP. Will be converted to WebP.</small>
+            </label>
+          </div>
+          <section className="apo-calculator">
+            <h3>📊 Offer Calculation Details</h3>
+            <p>Bonus per Month = (Payment Amount × Bonus Percentage) ÷ 100<br />Total Bonus = Bonus per Month × Duration (Months)</p>
+            <div className="apo-calc-grid">
+              <div>💰 Payment Amount<strong>{money(amount)}</strong></div>
+              <div>📈 Bonus Percentage<strong>{pct}%</strong></div>
+              <div>📅 Duration<strong>{months} months</strong></div>
+              <div>📊 Bonus per Month<strong>{money(monthly)}</strong></div>
+              <div>📊 Total Bonus<strong>{money(monthly * months)}</strong></div>
+            </div>
+          </section>
+          <footer>
+            <button type="button" onClick={() => { setForm(null); if (formOnly) navigate('/advance-payments'); }}>Cancel</button>
+            <button type="submit" disabled={busy}>{busy ? 'Saving…' : (form.id ? 'Save Changes' : 'Add Offer')}</button>
+          </footer>
+        </form>
+      </section>
+    );
+  }
+
+  if (formOnly) return <section className="panel apo apo-new-page"><button type="button" className="apo-back" onClick={() => navigate('/advance-payments')}>← Back to offers</button>{error && <p className="error" role="alert">{error}</p>}{form && offerForm(form)}</section>;
+
+  return (
+    <section className="panel apo">
+      <header className="apo-head">
+        <div><small>Admin workspace</small><h1>▣ Advance Pay Offers</h1></div>
+        <div><span className="apo-count">{rows.length} offers</span><button type="button" className="apo-green" onClick={() => { setError(''); setForm({ offer_name: '', payment_amount: '', bonus_percentage: '', duration_months: String(DEFAULT_ADVANCE_OFFER_MONTHS), status: 'ACTIVE' }); }}>＋ Add Offer</button></div>
+      </header>
+      {error && <p className="error" role="alert">{error}</p>}
+      <div className="apo-table-wrap">
+        <table className="apo-table">
+          <thead><tr><th>Image</th><th>Offer name</th><th>Payment</th><th>Bonus</th><th>Bonus per month</th><th>Duration</th><th>Benefit</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>{rows.map(offer => <tr key={offer.id}>
+            <td>{offer.image_url ? <img width="48" src={offer.image_url} alt={offer.offer_name} /> : '▧'}</td>
+            <td>{offer.offer_name}<small>ID: {offer.id}</small></td>
+            <td>{money(offer.payment_amount)}</td>
+            <td className="apo-bonus">{offer.bonus_percentage}%</td>
+            <td>{money((Number(offer.payment_amount) || 0) * (Number(offer.bonus_percentage) || 0) / 100)}</td>
+            <td>{offer.duration_months} mo</td><td>{money(offer.benefit)}</td><td>{offer.status}</td>
+            <td><button type="button" onClick={() => { setForm({ ...offer }); setError(''); }}>Edit</button> <button type="button" onClick={() => remove(offer)}>Delete</button></td>
+          </tr>)}</tbody>
+        </table>
+        {rows.length === 0 && <p>No offers found.</p>}
+      </div>
+      {form && !formOnly && <div className="apo-backdrop"><section className="apo-modal"><button type="button" className="apo-close" onClick={() => setForm(null)}>Close</button>{offerForm(form)}</section></div>}
+    </section>
+  );
+}

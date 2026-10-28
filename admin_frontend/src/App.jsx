@@ -1,0 +1,1632 @@
+/* oxlint-disable react/set-state-in-effect -- intentional API-loading and related-form initialization effects. */
+import React from "react";
+import {
+  BrowserRouter,
+  NavLink,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
+import api from "./api";
+import {
+  IDLE_PARENT_STATE,
+  PARENT_FIELDS,
+  createParentSettingsLoader,
+  parentSaveBlocker,
+  saveVariantAndParent as persistVariantAndParent,
+} from "./productSettings";
+import { deleteConfirmMessage, deleteRecord, describeDeleteError, describeLoadError, describeVariant, fetchVariant, pageAfterDelete, variantViewRows, withoutReadOnlyVariantKeys } from "./variantActions";
+import { validateEmail, validateMobile } from "./fieldValidation";
+import { fetchAll, normalizeTargetCategoryId, targetCategoryOptions } from "./uiUtils";
+import {
+  persistAdminSession,
+  getAdminSession,
+  clearAdminSession,
+  guardRedirect,
+} from "./authSession";
+import CrudDialog from "./CrudDialog";
+import DashboardPage from "./DashboardPage";
+import CategoriesPage from "./CategoriesPage";
+import SubCategoriesPage from "./SubCategoriesPage";
+import ProductsPage from "./ProductsPage";
+import BannersPage from "./BannersPage";
+import AdvancePaymentsPage from "./AdvancePaymentsPage";
+import OrdersPage from "./OrdersPage";
+import OrderDetailPage from "./OrderDetailPage";
+import CustomersPage from "./CustomersPage";
+import NotificationsPage from "./NotificationsPage";
+import ManageAllocationsPage from "./ManageAllocationsPage";
+import TargetSchemesPage from "./TargetSchemesPage";
+import {
+  LayoutDashboard,
+  Tags,
+  Layers,
+  Package,
+  Image as ImageIcon,
+  ShoppingCart,
+  Wallet,
+  Users,
+  UserRound,
+  Truck,
+  Warehouse as WarehouseIcon,
+  MapPin,
+  Target,
+  Bell,
+  Boxes,
+  FileText,
+  ClipboardList,
+  BarChart3,
+  Percent,
+} from "lucide-react";
+import "./App.css";
+const modules = [
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    endpoint: "dashboard",
+    readOnly: true,
+  },
+  { key: "categories", label: "Categories", endpoint: "categories" },
+  { key: "subcategories", label: "Sub Categories", endpoint: "subcategories" },
+  { key: "products", label: "Products", endpoint: "products" },
+  { key: "variants", label: "Product variants", endpoint: "product-variants" },
+  { key: "customers", label: "Customers", endpoint: "customers" },
+  { key: "orders", label: "Orders", endpoint: "orders", updateOnly: true },
+  { key: "banners", label: "Banners", endpoint: "banners" },
+  {
+    key: "notifications",
+    label: "Notifications",
+    endpoint: "notifications",
+    noUpdate: true,
+  },
+  { key: "warehouses", label: "Warehouse", endpoint: "warehouses" },
+  { key: "cart-discount", label: "Cart Discount", endpoint: "cart-discount-settings" },
+  {
+    key: "salesmen",
+    label: "Salesman",
+    endpoint: "staff",
+    params: { kind: "salesmen" },
+  },
+  {
+    key: "delivery",
+    label: "Delivery Boy",
+    endpoint: "staff",
+    params: { kind: "delivery" },
+  },
+  {
+    key: "advance-payments",
+    label: "Advance Payments",
+    endpoint: "advance-payments",
+  },
+  {
+    key: "advance-allocations",
+    label: "Advance allocations",
+    endpoint: "advance-allocations",
+  },
+  { key: "allocations", label: "Manage Allocations", endpoint: "allocations" },
+  { key: "locations", label: "Locations", endpoint: "locations" },
+  { key: "targets", label: "Target Schemes", endpoint: "targets" },
+  {
+    key: "reports",
+    label: "Reports & analytics",
+    endpoint: "reports",
+    readOnly: true,
+  },
+];
+const fieldSets = {
+  categories: [
+    ["name", "Category name", "text", 1],
+    ["image", "Image path or URL"],
+    ["active", "Active category", "checkbox"],
+  ],
+  subcategories: [
+    ["name", "Subcategory name", "text", 1],
+    ["category_id", "Parent category", "select", 1],
+    ["image", "Image path or URL"],
+    ["active", "Active subcategory", "checkbox"],
+  ],
+  products: [
+    ["name", "Product name", "text", 1],
+    ["code", "Product code", "text", 1],
+    ["price", "Price", "number", 1],
+    ["mrp", "MRP", "number"],
+    ["category_id", "Category", "select", 1],
+    ["subcategory_id", "Subcategory ID", "number"],
+    ["discount", "Discount", "number"],
+    ["visible", "Visibility"],
+    ["highlight", "Highlight product", "checkbox"],
+  ],
+  variants: [
+    ["product_id", "Product ID", "number", 1],
+    ["no_discount_banner", "Discount Y/N"],
+    ["disable_variants", "Disable Variants Y/N"],
+    ["name", "Variant name", "text", 1],
+    ["price", "Price", "number", 1],
+    ["mrp", "MRP", "number"],
+    ["quantity", "Quantity", "number", 1],
+    ["discount", "Discount"],
+    ["gst", "GST (Y/N)"],
+    ["gst_price", "GST amount", "number"],
+    ["minimum_buying_count", "Minimum purchase quantity", "number"],
+  ],
+  images: [
+    ["product_id", "Product ID", "number", 1],
+    ["image_path", "Image path or URL", "text", 1],
+    ["main", "Main image", "checkbox"],
+  ],
+  customers: [
+    ["username", "Username", "text", 1],
+    ["password", "Password (10+ characters)", "password", 1],
+    ["full_name", "Customer name", "text", 1],
+    ["shop_name", "Shop name"],
+    ["email", "Email", "email", 1],
+    ["phone", "Phone"],
+    ["address", "Address"],
+    ["city", "City"],
+    ["status", "Status"],
+    ["gst", "GST registered (Y/N)"],
+    ["gst_type", "GST type"],
+    ["delivery_charges", "Delivery charges", "number"],
+    ["vip_discount", "VIP discount (Y/N)"],
+    ["vip_percentage", "VIP percentage", "number"],
+  ],
+  orders: [["status", "Order status", "text", 1]],
+  banners: [
+    ["image_path", "Image path or URL", "text", 1],
+    ["text_content", "Text content"],
+    ["styled_text", "Styled text"],
+    ["styled_color", "Text color"],
+    ["background", "Background color"],
+    ["text_content2", "Secondary text"],
+  ],
+  notifications: [
+    ["title", "Title", "text", 1],
+    ["message", "Message", "textarea", 1],
+    ["recipient_type", "Recipient type (all/selected)", "text", 1],
+    ["customer_id", "Customer ID", "number"],
+  ],
+  warehouses: [
+    ["name", "Warehouse name", "text", 1],
+    ["address", "Address"],
+    ["pincode", "Pincode"],
+    ["state", "State"],
+    ["place", "Place"],
+    ["latitude", "Latitude (-90 to 90)", "number"],
+    ["longitude", "Longitude (-180 to 180)", "number"],
+  ],
+  inventory: [
+    ["quantity", "New stock quantity", "number", 1],
+    ["reason", "Adjustment reason", "text", 1],
+  ],
+  salesmen: [
+    ["username", "Username", "text", 1],
+    ["email", "Email", "email", 1],
+    ["full_name", "Full name", "text", 1],
+    ["password", "Password (10+ characters)", "password", 1],
+    ["phone", "Phone", "tel", 1],
+    ["address", "Address"],
+    ["commission_rate", "Commission rate", "number"],
+    ["target_sales", "Target sales", "number"],
+    ["hire_date", "Hire date", "date"],
+  ],
+  delivery: [
+    ["username", "Username", "text", 1],
+    ["email", "Email", "email", 1],
+    ["full_name", "Full name", "text", 1],
+    ["password", "Password (10+ characters)", "password", 1],
+    ["phone", "Phone", "tel", 1],
+    ["address", "Address"],
+  ],
+  "advance-payments": [
+    ["offer_name", "Offer name", "text", 1],
+    ["payment_amount", "Payment amount", "number", 1],
+    ["bonus_percentage", "Bonus percentage", "number", 1],
+    ["duration_months", "Duration in months", "number", 1],
+    ["status", "Status"],
+    ["image_path", "Image path or URL"],
+  ],
+  "advance-allocations": [
+    ["offer_id", "Offer ID", "number", 1],
+    ["user_id", "Customer ID", "number", 1],
+    ["payment_date", "Payment date", "date", 1],
+    ["payment_reference", "Payment reference"],
+    ["notes", "Notes", "textarea"],
+  ],
+  locations: [["city_name", "City name", "text", 1]],
+  targets: [
+    ["target_name", "Scheme name", "text", 1],
+    ["category_id", "Category", "select", 1],
+    ["target_amount", "Target amount", "number", 1],
+    ["reward_description", "Reward description", "textarea", 1],
+    ["reward_image", "Reward image", "reward-image"],
+    ["scheme_benefits", "Scheme benefits", "textarea"],
+    ["start_date", "Start date", "date", 1],
+    ["end_date", "End date", "date", 1],
+    ["status", "Status"],
+  ],
+};
+const numericFields = [
+  "category_id",
+  "subcategory_id",
+  "price",
+  "mrp",
+  "discount",
+  "quantity",
+  "product_id",
+  "offer_id",
+  "user_id",
+  "gst_price",
+  "minimum_buying_count",
+  "delivery_charges",
+  "vip_percentage",
+  "customer_id",
+  "latitude",
+  "longitude",
+  "commission_rate",
+  "target_sales",
+  "payment_amount",
+  "bonus_percentage",
+  "duration_months",
+  "total_credit",
+  "target_amount",
+];
+const moduleIcons = {
+  dashboard: LayoutDashboard,
+  categories: Tags,
+  subcategories: Layers,
+  products: Package,
+  variants: Boxes,
+  images: ImageIcon,
+  customers: Users,
+  orders: ShoppingCart,
+  banners: ImageIcon,
+  notifications: Bell,
+  warehouses: WarehouseIcon,
+  "cart-discount": Percent,
+  salesmen: UserRound,
+  delivery: Truck,
+  "advance-payments": Wallet,
+  "advance-allocations": ClipboardList,
+  allocations: ClipboardList,
+  locations: MapPin,
+  targets: Target,
+  reports: BarChart3,
+};
+const moduleResources = {
+  dashboard: "dashboard",
+  categories: "catalogue",
+  subcategories: "catalogue",
+  products: "catalogue",
+  variants: "catalogue",
+  images: "catalogue",
+  customers: "customers",
+  orders: "orders",
+  banners: "banners",
+  notifications: "notifications",
+  warehouses: "warehouse",
+  "cart-discount": "cart_discount",
+  salesmen: "staff",
+  delivery: "staff",
+  "advance-payments": "advance_payments",
+  "advance-allocations": "advance_payments",
+  allocations: "advance_payments",
+  locations: "locations",
+  targets: "targets",
+  reports: "reports",
+};
+const roleResources = {
+  SUPER_ADMIN: ["*"],
+  ADMIN: [
+    "dashboard",
+    "catalogue",
+    "customers",
+    "orders",
+    "banners",
+    "notifications",
+    "advance_payments",
+    "reports",
+    "targets",
+    "locations",
+    "warehouse",
+    "staff",
+  ],
+  SALESMAN: ["dashboard", "customers", "orders", "reports"],
+  WAREHOUSE_STAFF: [
+    "dashboard",
+    "catalogue",
+    "warehouse",
+    "orders",
+  ],
+  DELIVERY_BOY: ["dashboard", "orders"],
+};
+const orderStatuses = {
+  SUPER_ADMIN: [
+    ["Placed", "Placed"],
+    ["Processing", "Processing"],
+    ["Shipped", "Shipped"],
+    ["Out for Delivery", "Out for Delivery"],
+    ["Delivered", "Delivered"],
+    ["Fulfilled", "Fulfilled"],
+    ["Cancelled", "Cancelled"],
+  ],
+  ADMIN: [
+    ["Placed", "Placed"],
+    ["Processing", "Processing"],
+    ["Shipped", "Shipped"],
+    ["Out for Delivery", "Out for Delivery"],
+    ["Delivered", "Delivered"],
+    ["Fulfilled", "Fulfilled"],
+    ["Cancelled", "Cancelled"],
+  ],
+  SALESMAN: [
+    ["Placed", "Placed"],
+    ["Processing", "Processing"],
+  ],
+  WAREHOUSE_STAFF: [
+    ["Processing", "Processing"],
+    ["Shipped", "Shipped"],
+  ],
+  DELIVERY_BOY: [
+    ["Out for Delivery", "Out for Delivery"],
+    ["Delivered", "Delivered"],
+  ],
+};
+
+function Login() {
+  const [error, setError] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
+  const navigate = useNavigate();
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    const form = new FormData(event.currentTarget);
+    try {
+      const result = await api.post("auth/login", {
+        username: form.get("username"),
+        password: form.get("password"),
+      });
+      persistAdminSession(result.data);
+      navigate("/", { replace: true });
+    } catch (err) {
+      clearAdminSession();
+      setError(
+        err.response?.status === 503
+          ? err.response?.data?.message || "Admin login is unavailable because the PostgreSQL schema is not provisioned."
+          : err.response?.data?.detail ||
+              err.response?.data?.message ||
+              err.message ||
+              "Login failed",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <main className="login-wrap">
+      <section className="login-card">
+        <h1>StokIt Admin</h1>
+        <p>Sign in with your administrator account.</p>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <form onSubmit={submit}>
+          <label>
+            Username
+            <input name="username" autoComplete="username" required />
+          </label>
+          <label>
+            Password
+            <input
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              required
+            />
+          </label>
+          <label className="inline-check">
+            <input
+              type="checkbox"
+              checked={showPassword}
+              onChange={(event) => setShowPassword(event.target.checked)}
+            />{" "}
+            Show password
+          </label>
+          <button className="primary" disabled={busy}>
+            {busy ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+function ResourcePage({ module }) {
+  const [data, setData] = React.useState(null);
+  const [error, setError] = React.useState("");
+  const [notice, setNotice] = React.useState("");
+  const [search, setSearch] = React.useState("");
+  const [page, setPage] = React.useState(1);
+  const [busy, setBusy] = React.useState(false);
+  const deletingRef = React.useRef(false);
+  const [editing, setEditing] = React.useState(null);
+  const [details, setDetails] = React.useState(null);
+  const [viewing, setViewing] = React.useState(null);
+  const [relatedCategories, setRelatedCategories] = React.useState([]);
+  const [relatedProducts, setRelatedProducts] = React.useState([]);
+  const [parentState, setParentState] = React.useState({ ...IDLE_PARENT_STATE });
+  const variantSavedRef = React.useRef(null);
+  const [relatedCustomers, setRelatedCustomers] = React.useState([]);
+  const [relatedOffers, setRelatedOffers] = React.useState([]);
+  const endpoint = module.endpoint;
+  const key = module.key;
+  const session = getAdminSession();
+  const user = session?.user ?? null;
+  const role = user?.role;
+  const resource = moduleResources[key];
+  const allowedResources = roleResources[role] || [];
+  const canView =
+    allowedResources.includes("*") || allowedResources.includes(resource);
+  const parentHelp =
+    parentState.status === "loading"
+      ? "Loading this product's settings…"
+      : parentState.status === "error"
+        ? "Could not load product settings: " + parentState.error
+        : "Saved on the parent product, not on the variant.";
+  const fields = (fieldSets[key] || []).map((f) => {
+    let options;
+    if (
+      f[0] === "category_id" &&
+      ["subcategories", "products", "targets"].includes(key)
+    )
+      options = targetCategoryOptions(relatedCategories);
+    if (
+      f[0] === "category_id" &&
+      key === "products" &&
+      editing?.category_id &&
+      !options?.some((option) => option[0] === String(editing.category_id))
+    )
+      options = [
+        ...(options || []),
+        [String(editing.category_id), "Current category (not in first page)"],
+      ];
+    if (f[0] === "product_id" && ["variants", "images"].includes(key))
+      options = relatedProducts.map((product) => [
+        String(product.id),
+        product.name,
+      ]);
+    if (f[0] === "customer_id" && key === "notifications")
+      options = relatedCustomers.map((customer) => [
+        String(customer.id),
+        customer.full_name || customer.username,
+      ]);
+    if (f[0] === "user_id" && key === "advance-allocations")
+      options = relatedCustomers.map((customer) => [
+        String(customer.id),
+        customer.full_name || customer.username,
+      ]);
+    if (f[0] === "offer_id" && key === "advance-allocations")
+      options = relatedOffers.map((offer) => [
+        String(offer.id),
+        offer.offer_name,
+      ]);
+    if (f[0] === "product_id" && ["variants", "images"].includes(key))
+      options = relatedProducts.map((product) => [
+        String(product.id),
+        product.name,
+      ]);
+    if (f[0] === "customer_id" && key === "notifications")
+      options = relatedCustomers.map((customer) => [
+        String(customer.id),
+        customer.full_name || customer.username,
+      ]);
+    if (f[0] === "user_id" && key === "advance-allocations")
+      options = relatedCustomers.map((customer) => [
+        String(customer.id),
+        customer.full_name || customer.username,
+      ]);
+    if (f[0] === "offer_id" && key === "advance-allocations")
+      options = relatedOffers.map((offer) => [
+        String(offer.id),
+        offer.offer_name,
+      ]);
+    if (f[0] === "status")
+      options =
+        key === "orders"
+          ? orderStatuses[role] || []
+          : key === "customers"
+            ? [
+                ["ACTIVE", "Active"],
+                ["INACTIVE", "Inactive"],
+                ["SUSPENDED", "Suspended"],
+              ]
+            : key === "advance-allocations"
+              ? [
+                  ["ACTIVE", "Active"],
+                  ["COMPLETED", "Completed"],
+                  ["CANCELLED", "Cancelled"],
+                ]
+              : key === "targets"
+                ? [
+                    ["ACTIVE", "Active"],
+                    ["INACTIVE", "Inactive"],
+                    ["COMPLETED", "Completed"],
+                  ]
+                : [
+                    ["ACTIVE", "Active"],
+                    ["INACTIVE", "Inactive"],
+                  ];
+    if (f[0] === "visibility" || f[0] === "visible")
+      options = [
+        ["1", "Visible"],
+        ["0", "Hidden"],
+      ];
+    if (f[0] === "gst" || f[0] === "vip_discount")
+      options = [
+        ["N", "No"],
+        ["Y", "Yes"],
+      ];
+    if (key === "variants" && PARENT_FIELDS.includes(f[0]))
+      options = [
+        ["N", "No"],
+        ["Y", "Yes"],
+      ];
+    if (f[0] === "recipient_type")
+      options = [
+        ["all", "All customers"],
+        ["selected", "Selected customer"],
+      ];
+    return {
+      key: f[0],
+      label: f[1],
+      type: f[2] || "text",
+      required: Boolean(f[3]),
+      options: options,
+      googlePlaces: key === "warehouses" && f[0] === "address",
+      disabled: key === "variants" && PARENT_FIELDS.includes(f[0]) && parentState.status !== "ready",
+      readOnly: key === "variants" && f[0] === "product_id" && Boolean(editing?.id),
+      help: key === "variants" && PARENT_FIELDS.includes(f[0])
+        ? parentHelp
+        : key === "variants" && f[0] === "product_id" && editing?.id
+          ? "A variant cannot be moved to another product."
+          : undefined,
+      latitude: editing?.latitude,
+      longitude: editing?.longitude,
+      currentImageUrl: key === "targets" && f[0] === "reward_image"
+        ? (editing?.reward_image_url || "")
+        : "",
+    };
+  });
+  if (key === "advance-allocations" && editing && editing.id) {
+    fields.push(
+      {
+        key: "status",
+        label: "Status",
+        type: "text",
+        options: [
+          ["ACTIVE", "Active"],
+          ["COMPLETED", "Completed"],
+          ["CANCELLED", "Cancelled"],
+        ],
+      },
+      { key: "remaining_credit", label: "Remaining credit", type: "number" },
+      { key: "start_date", label: "Start date", type: "date" },
+      { key: "end_date", label: "End date", type: "date" },
+      { key: "adjustment_note", label: "Adjustment reason", type: "text" },
+    );
+  }
+  const load = React.useCallback(
+    async function () {
+      setBusy(true);
+      setError("");
+      try {
+        const response = await api.get(endpoint, {
+          params: { ...(module.params || {}), search, page, page_size: 20 },
+        });
+        setData(response.data);
+      } catch (err) {
+        setData(null);
+        setError(
+          err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "API request failed",
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [endpoint, module.params, page, search],
+  );
+  // oxlint-disable-next-line react/set-state-in-effect
+  React.useEffect(() => {
+    load();
+  }, [load]);
+  React.useEffect(() => {
+    let active = true;
+    const loadRelated = async () => {
+      try {
+        if (["subcategories", "products", "targets"].includes(key)) {
+          const categories = await fetchAll(api, "categories");
+          if (active) setRelatedCategories(categories);
+        }
+        if (["variants", "images"].includes(key)) {
+          const response = await api.get("products", {
+            params: { page: 1, page_size: 100 },
+          });
+          if (active)
+            setRelatedProducts(
+              Array.isArray(response.data?.results)
+                ? response.data.results
+                : [],
+            );
+        }
+        if (["notifications", "advance-allocations"].includes(key)) {
+          const response = await api.get("customers", {
+            params: { page: 1, page_size: 100 },
+          });
+          if (active)
+            setRelatedCustomers(
+              Array.isArray(response.data?.results)
+                ? response.data.results
+                : [],
+            );
+        }
+        if (key === "advance-allocations") {
+          const response = await api.get("advance-payments", {
+            params: { page: 1, page_size: 100 },
+          });
+          if (active)
+            setRelatedOffers(
+              Array.isArray(response.data?.results)
+                ? response.data.results
+                : [],
+            );
+        }
+      } catch {
+        if (active) {
+          if (["subcategories", "products", "targets"].includes(key))
+            setRelatedCategories([]);
+          if (["variants", "images"].includes(key)) setRelatedProducts([]);
+          if (["notifications", "advance-allocations"].includes(key))
+            setRelatedCustomers([]);
+          if (key === "advance-allocations") setRelatedOffers([]);
+        }
+      }
+    };
+    loadRelated();
+    return () => {
+      active = false;
+    };
+  }, [key]);
+  React.useEffect(() => {
+    if (
+      key === "targets" &&
+      editing &&
+      !editing.id &&
+      !editing.category_id &&
+      relatedCategories.length
+    ) {
+      setEditing((previous) =>
+        previous && !previous.id && !previous.category_id
+          ? { ...previous, category_id: String(relatedCategories[0].id) }
+          : previous,
+      );
+    }
+  }, [key, editing, relatedCategories]);
+  React.useEffect(() => {
+    if (
+      key === "variants" &&
+      editing &&
+      !editing.id &&
+      !editing.product_id &&
+      relatedProducts.length
+    )
+      setEditing((previous) =>
+        previous && !previous.product_id
+          ? { ...previous, product_id: String(relatedProducts[0].id) }
+          : previous,
+      );
+  }, [key, editing, relatedProducts]);
+  React.useEffect(() => {
+    if (
+      key === "advance-allocations" &&
+      editing &&
+      !editing.id &&
+      (relatedOffers.length || relatedCustomers.length)
+    )
+      setEditing((previous) => {
+        if (!previous || previous.id) return previous;
+        const next = { ...previous };
+        if (!next.offer_id && relatedOffers.length)
+          next.offer_id = String(relatedOffers[0].id);
+        if (!next.user_id && relatedCustomers.length)
+          next.user_id = String(relatedCustomers[0].id);
+        return next;
+      });
+  }, [key, editing, relatedOffers, relatedCustomers]);
+  const variantProductId =
+    key === "variants" && editing ? String(editing.product_id || "") : "";
+  // Root cause of "The selected product's settings have not finished loading": this effect used to
+  // call fetchParentSettings(variantProductId) without the API client, so every load threw and the
+  // state could only ever end as "error". The loader below always passes the client, ignores
+  // responses superseded by a newer selection, and load() doubles as the Retry action.
+  const [parentLoader] = React.useState(() => createParentSettingsLoader({
+    api,
+    onState: (state) => {
+      setParentState(state);
+      if (state.status === "ready")
+        setEditing((previous) =>
+          previous && String(previous.product_id || "") === state.productId
+            ? { ...previous, ...state.original }
+            : previous,
+        );
+    },
+  }));
+  React.useEffect(() => {
+    const loader = parentLoader;
+    if (!variantProductId) {
+      loader.reset();
+      return undefined;
+    }
+    loader.load(variantProductId);
+    return () => loader.cancel();
+  }, [key, variantProductId, parentLoader]);
+  const rows = Array.isArray(data?.results) ? data.results : [];
+  const canCreate =
+    ["SUPER_ADMIN", "ADMIN"].includes(role) &&
+    !module.readOnly &&
+    !module.updateOnly;
+  const canEdit =
+    !module.readOnly &&
+    !module.noUpdate &&
+    key !== "images" &&
+    (["SUPER_ADMIN", "ADMIN"].includes(role) ||
+      (role === "SALESMAN" && ["customers", "orders"].includes(key)) ||
+      (role === "WAREHOUSE_STAFF" && ["inventory", "orders"].includes(key)) ||
+      (role === "DELIVERY_BOY" && key === "orders"));
+  const canDelete =
+    ["SUPER_ADMIN", "ADMIN"].includes(role) &&
+    !module.readOnly &&
+    !module.updateOnly &&
+    !["inventory", "orders"].includes(key);
+  // View and Edit of a variant read the saved record from the API, never the row the list happens to hold.
+  async function loadSavedVariant(row) {
+    if (busy) return null;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      return await fetchVariant(api, endpoint, row.id);
+    } catch (err) {
+      const problem = describeLoadError(err, row.id);
+      if (problem.refresh) await load();
+      setError(problem.message);
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function openForm(row) {
+    if (key === "variants" && row?.id) {
+      const saved = await loadSavedVariant(row);
+      if (saved) openFormWith(saved);
+      return;
+    }
+    openFormWith(row);
+  }
+  async function viewVariant(row) {
+    const saved = await loadSavedVariant(row);
+    if (saved) setViewing(saved);
+  }
+  function openFormWith(row) {
+    const initial = row ? { ...row } : { ...(module.params || {}) };
+    if (!row && key === "variants" && relatedProducts.length)
+      initial.product_id = String(relatedProducts[0].id);
+    if (!row && ["categories", "subcategories"].includes(key))
+      initial.active = true;
+    if (key === "images")
+      initial.main = row
+        ? row.main === "1" || row.main === 1 || row.main === true
+        : false;
+    if (key === "products" && row)
+      initial.highlight =
+        row.highlight === "1" || row.highlight === 1 || row.highlight === true;
+    if (key === "targets") {
+      if (row && row.category_id != null) initial.category_id = String(row.category_id);
+      if (!row) {
+        initial.status = "ACTIVE";
+        if (!initial.category_id && relatedCategories.length)
+          initial.category_id = String(relatedCategories[0].id);
+      }
+    }
+    variantSavedRef.current = null;
+    setEditing(initial);
+    setError("");
+    setNotice("");
+  }
+  const changeField = React.useCallback((field, value) => {
+    setEditing((previous) => ({ ...previous, [field]: value }));
+  }, []);
+  // The variant and the parent product settings are two separate API writes (not atomic).
+  // On a partial failure the variant stays saved, the dialog stays open and the error says so.
+  async function saveVariantAndParent(values, parentSettings) {
+    const productKey = String(values.product_id);
+    await persistVariantAndParent({
+      api,
+      endpoint,
+      values,
+      parentSettings,
+      original: parentState.original,
+      alreadySaved: !values.id && variantSavedRef.current === productKey,
+      onVariantSaved: () => {
+        if (!values.id) variantSavedRef.current = productKey;
+      },
+    });
+    variantSavedRef.current = null;
+  }
+  async function save(event) {
+    event.preventDefault();
+    const fieldErrors = {};
+    if (["salesmen", "delivery"].includes(key)) {
+      const emailError = validateEmail(editing.email, { required: true });
+      const phoneError = validateMobile(editing.phone, { required: true });
+      if (emailError) fieldErrors.email = emailError;
+      if (phoneError) fieldErrors.phone = phoneError;
+    }
+    if (Object.keys(fieldErrors).length) {
+      setError(
+        Object.entries(fieldErrors)
+          .map(([field, message]) => field + ": " + message)
+          .join(" · "),
+      );
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setNotice("");
+    const values = { ...editing };
+    if (key === "targets") {
+      const categoryId = normalizeTargetCategoryId(values.category_id);
+      if (categoryId === null) {
+        setError("Choose a valid category from the Category dropdown.");
+        setBusy(false);
+        return;
+      }
+      values.category_id = categoryId;
+    }
+    numericFields.forEach((field) => {
+      if (
+        values[field] !== undefined &&
+        values[field] !== "" &&
+        values[field] !== null
+      )
+        values[field] = Number(values[field]);
+    });
+    if (key === "variants") {
+      values.name = String(values.name || "").trim();
+      values.product_id = Number(values.product_id);
+      values.gst = String(values.gst || "N").toUpperCase();
+      values.price =
+        values.price === "" || values.price == null
+          ? NaN
+          : Number(values.price);
+      values.mrp =
+        values.mrp === "" || values.mrp == null
+          ? values.price
+          : Number(values.mrp);
+      values.quantity =
+        values.quantity === "" || values.quantity == null
+          ? NaN
+          : Number(values.quantity);
+      values.gst_price =
+        values.gst_price === "" || values.gst_price == null
+          ? 0
+          : Number(values.gst_price);
+      values.discount = String(values.discount ?? "0");
+      if (
+        !Number.isInteger(values.product_id) ||
+        values.product_id <= 0 ||
+        !values.name ||
+        !Number.isFinite(values.price) ||
+        !Number.isFinite(values.mrp) ||
+        !Number.isFinite(values.quantity) ||
+        !Number.isFinite(values.gst_price) ||
+        values.price < 0 ||
+        values.mrp < 0 ||
+        values.quantity < 0 ||
+        values.gst_price < 0
+      ) {
+        setError(
+          "Choose a product and enter a variant name, valid non-negative price and quantity. MRP defaults to price; GST amount defaults to 0.",
+        );
+        setBusy(false);
+        return;
+      }
+    }
+    let parentSettings = null;
+    if (key === "variants") {
+      parentSettings = {
+        no_discount_banner: values.no_discount_banner,
+        disable_variants: values.disable_variants,
+      };
+      // Product-level settings must never reach the product-variants API.
+      delete values.no_discount_banner;
+      delete values.disable_variants;
+      // Display-only fields from the API are never part of a save (the API rejects unknown fields).
+      const writable = withoutReadOnlyVariantKeys(values);
+      Object.keys(values).forEach((k) => { if (!(k in writable)) delete values[k]; });
+      const blocked = parentSaveBlocker(parentState, String(values.product_id), parentSettings);
+      if (blocked) {
+        setError(blocked);
+        setBusy(false);
+        return;
+      }
+    }
+    if (module.params) Object.assign(values, module.params);
+    if (key === "images" && values.main !== undefined)
+      values.main = Boolean(values.main);
+    if (key === "variants" && values.id) {
+      values.variant_price = values.price;
+      delete values.price;
+    }
+    try {
+      if (key === "variants") {
+        await saveVariantAndParent(values, parentSettings);
+        setNotice("Variant and product settings saved and verified.");
+      } else {
+        await api.request({
+          method: values.id ? "PATCH" : "POST",
+          url: endpoint,
+          data: values,
+        });
+        setNotice("Saved successfully.");
+      }
+      setEditing(null);
+      await load();
+    } catch (err) {
+      // Variant stored but the parent-settings step failed: the dialog stays open, but the table must
+      // not keep showing the old values. Refresh first (load() clears the error), then show the message.
+      if (err.partial) await load();
+      const body = err.response?.data;
+      setError(
+        typeof body === "string"
+          ? body
+          : body
+            ? Object.entries(body)
+                .map(
+                  ([field, message]) =>
+                    field +
+                    ": " +
+                    (Array.isArray(message)
+                      ? message.join(", ")
+                      : typeof message === "object"
+                        ? JSON.stringify(message)
+                        : String(message)),
+                )
+                .join(" · ")
+            : err.message ||
+              "Save failed. Check the backend server and try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function remove(row) {
+    const isVariant = key === "variants";
+    // The ref closes the gap between a click and React disabling the buttons, so a double click cannot send two requests.
+    if (busy || deletingRef.current) return;
+    const label = isVariant
+      ? describeVariant(row)
+      : (row.name || row.full_name || row.username || row.order_id || row.id) + " (ID " + row.id + ")";
+    const confirmed = window.confirm(
+      isVariant
+        ? deleteConfirmMessage(row)
+        : 'Delete "' + label + '"? This action cannot be undone.',
+    );
+    if (!confirmed) return;
+    deletingRef.current = true;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    let deleted = false;
+    try {
+      await deleteRecord(api, endpoint, module.params, row.id);
+      deleted = true;
+    } catch (err) {
+      if (err.response?.status === 404) await load();
+      setError(describeDeleteError(err, label));
+    } finally {
+      deletingRef.current = false;
+      setBusy(false);
+    }
+    if (!deleted) return;
+    // Refresh only after the server confirmed the delete; never remove the row optimistically.
+    setNotice("Deleted " + label + ".");
+    const nextPage = pageAfterDelete(page, rows.length);
+    if (nextPage !== page) setPage(nextPage);
+    else await load();
+  }
+  async function showOrder(row) {
+    setError("");
+    try {
+      const response = await api.get("orders", { params: { id: row.id } });
+      setDetails(response.data);
+    } catch (err) {
+      setError(JSON.stringify(err.response?.data || err.message));
+    }
+  }
+  const totals =
+    key === "dashboard" ? data : key === "reports" ? data?.totals : null;
+  const recent =
+    key === "dashboard"
+      ? data?.recent_orders
+      : key === "reports"
+        ? data?.recent_orders
+        : null;
+  if (!canView)
+    return (
+      <section className="panel">
+        <h1>Access restricted</h1>
+        <p>
+          Your assigned role cannot access this module. Contact a Super Admin if
+          you believe this is incorrect.
+        </p>
+      </section>
+    );
+  return (
+    <section className="panel">
+      <div className="page-heading">
+        <div>
+          <h1>{module.label}</h1>
+          <p>
+            Live Django API data. No mock records are inserted by this screen.
+          </p>
+        </div>
+        <button onClick={load} disabled={busy}>
+          Refresh
+        </button>
+      </div>
+      {!module.readOnly && (
+        <div className="toolbar">
+          <input
+            aria-label="Search records"
+            placeholder="Search records…"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+          />
+          {canCreate && (
+            <button className="primary-action" onClick={() => openForm(null)}>
+              Add new
+            </button>
+          )}
+        </div>
+      )}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="success" role="status">
+          {notice}
+        </p>
+      )}
+      {totals && (
+        <div className="stats-grid">
+          {Object.entries(totals)
+            .filter((entry) => typeof entry[1] !== "object")
+            .map((entry) => (
+              <article className="stat-card" key={entry[0]}>
+                <span>{entry[0].replaceAll("_", " ")}</span>
+                <strong>{String(entry[1] ?? 0)}</strong>
+              </article>
+            ))}
+        </div>
+      )}
+      {key === "reports" && Array.isArray(data?.orders_by_status) && (
+        <div className="table-wrap">
+          <h2>Orders by status</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Count</th>
+                <th>Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.orders_by_status.map((item, index) => (
+                <tr key={item.status || index}>
+                  <td>{item.status}</td>
+                  <td>{item.count}</td>
+                  <td>{item.revenue ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {Array.isArray(recent) && (
+        <div className="table-wrap">
+          <h2>Recent orders</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((item, index) => (
+                <tr key={item.order_id || index}>
+                  <td>{item.order_id}</td>
+                  <td>{item.full_name}</td>
+                  <td>{item.total_amount}</td>
+                  <td>{item.status}</td>
+                  <td>{String(item.order_date || "")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {busy && !data && (
+        <p className="empty" role="status">
+          Loading live records…
+        </p>
+      )}
+      {data && rows.length === 0 && !totals && (
+        <p className="empty">No records returned by this API.</p>
+      )}
+      {rows.length > 0 && (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                {Object.keys(rows[0])
+                  .filter(
+                    (field) =>
+                      ![
+                        "images",
+                        "variants",
+                        "password",
+                        "token",
+                        "api_token",
+                      ].includes(field),
+                  )
+                  .map((field) => (
+                    <th key={field}>{field.replaceAll("_", " ")}</th>
+                  ))}
+                {(canEdit || canDelete || key === "orders" || key === "variants") && <th>Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={row.id ?? index}>
+                  {Object.entries(row)
+                    .filter(
+                      (entry) =>
+                        ![
+                          "images",
+                          "variants",
+                          "password",
+                          "token",
+                          "api_token",
+                        ].includes(entry[0]),
+                    )
+                    .map((entry) => (
+                      <td key={entry[0]}>
+                        {typeof entry[1] === "object" && entry[1] !== null
+                          ? JSON.stringify(entry[1])
+                          : String(entry[1] ?? "—")}
+                      </td>
+                    ))}
+                  {(canEdit || canDelete || key === "orders" || key === "variants") && (
+                    <td className="row-actions">
+                      {key === "variants" && (
+                        <button onClick={() => viewVariant(row)} disabled={busy}>
+                          View
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button onClick={() => openForm(row)} disabled={busy}>
+                          Edit
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          className="danger-action"
+                          onClick={() => remove(row)}
+                          disabled={busy}
+                        >
+                          Delete
+                        </button>
+                      )}
+                      {key === "orders" && (
+                        <button onClick={() => showOrder(row)} disabled={busy}>
+                          Details
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {data?.count > 0 && (
+        <div className="pagination">
+          <span>
+            {data.count} records · Page {data.page} of{" "}
+            {Math.max(1, Math.ceil(data.count / (data.page_size || 20)))}
+          </span>
+          <div className="button-row">
+            <button
+              disabled={page <= 1 || busy}
+              onClick={() => setPage((current) => current - 1)}
+            >
+              Previous
+            </button>
+            <button
+              disabled={
+                page >= Math.ceil(data.count / (data.page_size || 20)) || busy
+              }
+              onClick={() => setPage((current) => current + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+      {editing && (
+        <CrudDialog
+          title={
+            (editing.id ? "Edit " : "Create ") + module.label.replace(/s$/, "")
+          }
+          fields={fields
+            .filter(
+              (field) =>
+                !(
+                  editing.id &&
+                  key === "customers" &&
+                  field.key === "password"
+                ),
+            )
+            .map((field) =>
+              editing.id && field.key === "password"
+                ? { ...field, required: false }
+                : field,
+            )}
+          value={editing}
+          busy={busy}
+          error={error}
+          onClose={() => setEditing(null)}
+          onChange={changeField}
+          onSubmit={save}
+          saveDisabled={key === "variants" && parentState.status === "loading"}
+          retry={
+            key === "variants" && parentState.status === "error"
+              ? { label: "Retry loading product settings", onClick: () => parentLoader.load(variantProductId) }
+              : null
+          }
+        />
+      )}
+      {viewing && (
+        <div className="modal-backdrop">
+          <section className="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="variant-view-title">
+            <div className="page-heading">
+              <h2 id="variant-view-title">Variant details</h2>
+              <button onClick={() => setViewing(null)}>Close</button>
+            </div>
+            <dl>
+              {variantViewRows(viewing).map(([label, value]) => (
+                <React.Fragment key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </React.Fragment>
+              ))}
+            </dl>
+          </section>
+        </div>
+      )}
+      {details && (
+        <div className="modal-backdrop">
+          <section
+            className="editor-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-detail-title"
+          >
+            <div className="page-heading">
+              <h2 id="order-detail-title">Order details</h2>
+              <button onClick={() => setDetails(null)}>Close</button>
+            </div>
+            <pre>{JSON.stringify(details.order, null, 2)}</pre>
+            <h3>Items</h3>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Variant</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(details.items || []).map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.product_name}</td>
+                      <td>{item.variant_name}</td>
+                      <td>{item.quantity}</td>
+                      <td>{item.price}</td>
+                      <td>{item.total_price}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CartDiscountPage({ canWrite }) {
+  const [config, setConfig] = React.useState(null);
+  const [form, setForm] = React.useState({ enabled: false, minimum_subtotal: "", fixed_discount_amount: "" });
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const [notice, setNotice] = React.useState("");
+  const load = React.useCallback(async () => {
+    setBusy(true); setError("");
+    try {
+      const response = await api.get("cart-discount-settings");
+      setConfig(response.data);
+      setForm({ enabled: Boolean(response.data.enabled), minimum_subtotal: String(response.data.minimum_subtotal ?? ""), fixed_discount_amount: String(response.data.fixed_discount_amount ?? "") });
+    } catch (err) { setError(err.response?.data?.detail || err.response?.data?.message || (err.response?.status ? `Could not load cart discount settings (HTTP ${err.response.status}).` : "Could not reach the admin API. Check that Django is running.")); }
+    finally { setBusy(false); }
+  }, []);
+  React.useEffect(() => { load(); }, [load]);
+  async function save(event) {
+    event.preventDefault(); setError(""); setNotice("");
+    const threshold = Number(form.minimum_subtotal), amount = Number(form.fixed_discount_amount);
+    if (!Number.isFinite(threshold) || threshold < 0 || !Number.isFinite(amount) || amount < 0) { setError("Enter valid, finite, non-negative amounts for both fields."); return; }
+    setBusy(true);
+    try { const response = await api.put("cart-discount-settings", { enabled: form.enabled, minimum_subtotal: form.minimum_subtotal, fixed_discount_amount: form.fixed_discount_amount }); setConfig(response.data); setForm({ enabled: Boolean(response.data.enabled), minimum_subtotal: String(response.data.minimum_subtotal), fixed_discount_amount: String(response.data.fixed_discount_amount) }); setNotice("Cart discount settings saved."); }
+    catch (err) { const body = err.response?.data; const fieldErrors = body?.errors && typeof body.errors === "object" ? Object.values(body.errors).join(" ") : ""; setError(body?.detail || body?.message || fieldErrors || (err.response?.status ? `Save failed (HTTP ${err.response.status}). The server did not confirm that settings were saved.` : "Could not reach the admin API. Check that Django is running.")); }
+    finally { setBusy(false); }
+  }
+  return <section className="resource-page"><div className="page-heading"><div><h1>Cart Discount</h1><p>Configure a fixed discount for eligible cart items.</p></div><button type="button" onClick={load} disabled={busy}>Refresh</button></div>
+    <p>Eligibility is calculated by the server from actual cart records. Only products with no product-level or other discount qualify; an active VIP discount disables the cart discount to prevent stacking. The eligible subtotal must be strictly greater than the configured threshold. Client-supplied totals are never trusted.</p>
+    {error && <p className="error" role="alert">{error}</p>}{notice && <p className="success" role="status">{notice}</p>}
+    <form className="editor-form" onSubmit={save}>
+      <label className="inline-check"><input type="checkbox" checked={form.enabled} onChange={e=>setForm(v=>({...v,enabled:e.target.checked}))} disabled={!canWrite || busy}/> Enable cart discount</label>
+      <label>Minimum eligible subtotal (?)<input type="number" min="0" step="0.01" required value={form.minimum_subtotal} onChange={e=>setForm(v=>({...v,minimum_subtotal:e.target.value}))} disabled={!canWrite || busy}/></label>
+      <label>Fixed cart discount amount (?)<input type="number" min="0" step="0.01" required value={form.fixed_discount_amount} onChange={e=>setForm(v=>({...v,fixed_discount_amount:e.target.value}))} disabled={!canWrite || busy}/></label>
+      {canWrite && <button className="primary" type="submit" disabled={busy}>{busy ? "Saving?" : "Save Changes"}</button>}
+    </form>
+    {config && <div className="table-wrap"><h2>Saved configuration</h2><p>Status: {config.enabled ? "Enabled" : "Disabled"}</p><p>Minimum eligible subtotal: ?{config.minimum_subtotal}</p><p>Fixed discount: ?{config.fixed_discount_amount}</p><p>Last updated: {config.updated_at || "Not recorded"}</p></div>}
+  </section>;
+}
+
+function Home() {
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const session = getAdminSession();
+  const user = session?.user ?? null;
+  const allowed = roleResources[user?.role] || [];
+  const location = useLocation();
+  const currentLabel = (
+    modules.find(
+      (module) =>
+        (module.key === "dashboard" ? "/" : "/" + module.key) ===
+          location.pathname ||
+        (module.key !== "dashboard" &&
+          location.pathname.startsWith("/" + module.key + "/")),
+    ) || { label: "Dashboard" }
+  ).label;
+  const canSee = (module) =>
+    allowed.includes("*") || allowed.includes(moduleResources[module.key]);
+  const pageFor = (module) => {
+    if (module.key === "dashboard" && canSee(module)) return <DashboardPage />;
+    if (module.key === "categories" && canSee(module))
+      return (
+        <CategoriesPage
+          canWrite={["SUPER_ADMIN", "ADMIN"].includes(user?.role)}
+        />
+      );
+    const writer = ["SUPER_ADMIN", "ADMIN"].includes(user?.role);
+    if (module.key === "cart-discount" && canSee(module)) return <CartDiscountPage canWrite={writer} />;
+    if (module.key === "subcategories" && canSee(module))
+      return <SubCategoriesPage canWrite={writer} />;
+    if (module.key === "products" && canSee(module))
+      return <ProductsPage canWrite={writer} />;
+    if (module.key === "banners" && canSee(module))
+      return <BannersPage canWrite={writer} />;
+    if (module.key === "orders" && canSee(module))
+      return <OrdersPage canAssign={writer} />;
+    if (module.key === "customers" && canSee(module))
+      return <CustomersPage role={user?.role} />;
+    if (module.key === "notifications" && canSee(module))
+      return <NotificationsPage canWrite={writer} />;
+    if (module.key === "advance-payments" && canSee(module))
+      return <AdvancePaymentsPage />;
+    if (module.key === "allocations" && canSee(module))
+      return <ManageAllocationsPage canWrite={writer} />;
+    if (module.key === "targets" && canSee(module))
+      return <TargetSchemesPage canWrite={writer} />;
+    return <ResourcePage module={module} />;
+  };
+  const visibleModules = modules.filter(
+    (module) =>
+      allowed.includes("*") || allowed.includes(moduleResources[module.key]),
+  );
+  return (
+    <div
+      className={`app-shell${location.pathname === "/orders" ? " orders-reference-shell" : ""}`}
+    >
+      {menuOpen && (
+        <button
+          type="button"
+          className="sidebar-overlay"
+          aria-label="Close navigation"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+      <aside
+        id="admin-sidebar"
+        className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}
+      >
+        <div className="brand-row">
+          <span className="brand-mark" aria-hidden="true">
+            S
+          </span>
+          <div>
+            <h2>Stokit</h2>
+            <p>Admin Panel</p>
+          </div>
+        </div>
+        <p className="role-label">
+          {user?.username || "Administrator"} ·{" "}
+          {user?.role || "Role not assigned"}
+        </p>
+        <p className="nav-caption">Workspace</p>
+        <nav>
+          {visibleModules.map((module) => (
+            <NavLink
+              key={module.key}
+              onClick={() => setMenuOpen(false)}
+              end={module.key === "dashboard"}
+              to={module.key === "dashboard" ? "/" : "/" + module.key}
+              className={({ isActive }) => (isActive ? "active" : undefined)}
+            >
+              {React.createElement(moduleIcons[module.key] || FileText, {
+                size: 18,
+                "aria-hidden": true,
+              })}
+              <span>{module.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+        <small className="sidebar-foot">
+          Secure workspace · Permissions are enforced by the backend.
+        </small>
+      </aside>
+      <main className="main-area">
+        <header className="topbar">
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            aria-label="Open navigation"
+            aria-controls="admin-sidebar"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            ☰
+          </button>
+          <nav aria-label="Breadcrumb" className="breadcrumb">
+            Workspace <span aria-hidden="true">/</span>{" "}
+            <strong>{currentLabel}</strong>
+          </nav>
+          <div className="topbar-user">
+            <span className="user-avatar" aria-hidden="true">
+              {(user?.username || "A").slice(0, 1).toUpperCase()}
+            </span>
+            <span className="user-details">
+              <strong>{user?.username || "Administrator"}</strong>
+              <small>{user?.role || "Role not assigned"}</small>
+            </span>
+            <button
+              onClick={() => {
+                clearAdminSession();
+                window.location.href = "/login";
+              }}
+            >
+              Log out
+            </button>
+          </div>
+        </header>
+        <div className="content">
+          {[
+            "Dashboard",
+            "Categories",
+            "Sub Categories",
+            "Products",
+            "Banners",
+          ].includes(currentLabel) && (
+            <div className="sk-page-title">
+              <span>Admin workspace</span>
+              <h1>{currentLabel}</h1>
+            </div>
+          )}
+          <Routes>
+            {modules.map((module) => (
+              <Route
+                key={module.key}
+                path={module.key === "dashboard" ? "/" : "/" + module.key}
+                element={pageFor(module)}
+              />
+            ))}
+            {canSee({ key: "orders" }) && (
+              <Route
+                path="/orders/:orderId"
+                element={<OrderDetailPage role={user?.role} />}
+              />
+            )}
+            <Route
+              path="/advance-payments/new"
+              element={<AdvancePaymentsPage formOnly />}
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </main>
+    </div>
+  );
+}
+// The session is read INSIDE this component so it is re-evaluated on every navigation.
+// Previously App read it once while rendering, which left a stale <Navigate to="/login" />
+// element in the route tree and bounced the user back to /login right after a successful sign-in.
+function Guarded({ children }) {
+  const location = useLocation();
+  const redirect = guardRedirect(location.pathname, getAdminSession());
+  return redirect ? <Navigate to={redirect} replace /> : children;
+}
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            <Guarded>
+              <Login />
+            </Guarded>
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <Guarded>
+              <Home />
+            </Guarded>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
+  );
+}

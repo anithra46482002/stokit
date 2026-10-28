@@ -1,0 +1,238 @@
+"""Database-free regression tests for product-variant Edit (PATCH) and Delete.
+
+The destructive paths run on mocks only; the real-database behaviour is checked by
+scripts/verify_variant_flow.py inside a transaction that is always rolled back.
+"""
+from contextlib import nullcontext
+from decimal import Decimal
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+from django.db import IntegrityError
+from django.test import SimpleTestCase
+from rest_framework.test import APIRequestFactory, force_authenticate
+
+from adminapi import crud
+
+
+def _user(role="ADMIN"):
+    return SimpleNamespace(is_authenticated=True, role=role, pk=1, principal_type="ADMIN")
+
+
+def _row(variant_id=3, product_id=10, **extra):
+    row = SimpleNamespace(
+        variant_id=variant_id, product_id=product_id, variant_name="500g", variant_price=Decimal("10"),
+        mrp=Decimal("12"), quantity=5, disc="0", gst="N", gst_price=Decimal("0"), minimum_buying_count=1,
+        save=MagicMock(), delete=MagicMock())
+    for key, value in extra.items():
+        setattr(row, key, value)
+    return row
+
+
+def _call(method, payload=None, query="", user="ADMIN"):
+    path = "/admin-api/product-variants" + query
+    factory = APIRequestFactory()
+    request = getattr(factory, method)(path, payload, format="json") if payload is not None else getattr(factory, method)(path)
+    if user:
+        force_authenticate(request, user=_user(user))
+    return crud.VariantCRUDView.as_view()(request)
+
+
+class VariantEditTests(SimpleTestCase):
+    def _patch(self, payload, row=None, **kwargs):
+        row = row or _row()
+        with patch.object(crud.Variant.objects, "filter") as variants:
+            variants.return_value.first.return_value = row
+            response = _call("patch", payload, **kwargs)
+        return response, row
+
+    def test_valid_edit_saves_only_the_changed_columns_of_that_variant(self):
+        response, row = self._patch({"id": 3, "name": "1kg", "quantity": 9})
+        self.assertEqual(response.status_code, 200)
+        row.save.assert_called_once_with(update_fields=["quantity", "variant_name"])
+        self.assertEqual((response.data["id"], response.data["name"], response.data["quantity"]), (3, "1kg", 9))
+
+    def test_success_response_has_the_same_fields_as_get_and_post(self):
+        response, _ = self._patch({"id": 3, "name": "1kg"})
+        for field in ("id", "product_id", "name", "price", "mrp", "quantity", "discount", "gst", "gst_price", "minimum_buying_count"):
+            self.assertIn(field, response.data)
+
+    def test_changing_the_product_is_refused_instead_of_silently_ignored(self):
+        response, row = self._patch({"id": 3, "product_id": 99, "name": "x"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("product_id", response.data)
+        row.save.assert_not_called()
+
+    def test_resending_the_same_product_id_is_accepted(self):
+        response, row = self._patch({"id": 3, "product_id": 10, "name": "x"})
+        self.assertEqual(response.status_code, 200)
+        row.save.assert_called_once()
+
+    def test_non_numeric_product_id_is_rejected(self):
+        response, row = self._patch({"id": 3, "product_id": "abc"})
+        self.assertEqual(response.status_code, 400)
+        row.save.assert_not_called()
+
+    def test_invalid_input_is_rejected_without_saving(self):
+        for payload in ({"id": 3, "name": "  "}, {"id": 3, "quantity": -1}, {"id": 3, "quantity": "1.5"},
+                        {"id": 3, "price": "-4"}, {"id": 3, "discount": "abc"}, {"id": 3, "gst": "Q"}):
+            response, row = self._patch(payload)
+            self.assertEqual(response.status_code, 400, payload)
+            row.save.assert_not_called()
+
+    def test_missing_variant_is_404_and_nothing_is_saved(self):
+        with patch.object(crud.Variant.objects, "filter") as variants:
+            variants.return_value.first.return_value = None
+            response = _call("patch", {"id": 999, "name": "x"})
+        self.assertEqual(response.status_code, 404)
+
+    def test_missing_or_invalid_id_is_400(self):
+        for payload in ({"name": "x"}, {"id": "abc"}, {"id": None}):
+            self.assertEqual(_call("patch", payload).status_code, 400, payload)
+
+    def test_database_failure_is_reported_not_swallowed(self):
+        row = _row(save=MagicMock(side_effect=IntegrityError("constraint")))
+        response, _ = self._patch({"id": 3, "name": "x"}, row=row)
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn("id", response.data)  # an error body, never a success payload
+        row = _row(save=MagicMock(side_effect=RuntimeError("db down")))
+        with patch.object(crud, "log_db_error") as log:
+            response, _ = self._patch({"id": 3, "name": "x"}, row=row)
+        self.assertEqual(response.status_code, 500)
+        log.assert_called_once()
+
+    def test_unauthenticated_and_unprivileged_edits_are_rejected(self):
+        for user in (None, "WAREHOUSE_STAFF", "SALESMAN", "DELIVERY_BOY"):
+            with patch.object(crud.Variant.objects, "filter") as variants:
+                response = _call("patch", {"id": 3, "name": "x"}, user=user)
+                variants.assert_not_called()
+            self.assertIn(response.status_code, (401, 403), user)
+
+
+class VariantDeleteTests(SimpleTestCase):
+    """Runs the real view with the database layer mocked; asserts what is (not) deleted."""
+
+    def _delete(self, row, *, orders=False, cart=0, stock=False, cart_error=None, user="ADMIN", query="?id=3"):
+        select = MagicMock()
+        select.return_value.filter.return_value.first.return_value = row
+        cursor = MagicMock()
+        cursor.__enter__.return_value.fetchone.return_value = (cart,)
+        if cart_error:
+            cursor.__enter__.return_value.execute.side_effect = cart_error
+        patches = (
+            patch.object(crud.transaction, "atomic", return_value=nullcontext()),
+            patch.object(crud.Variant.objects, "select_for_update", select),
+            patch.object(crud.OrderItem.objects, "filter", return_value=MagicMock(exists=lambda: orders)),
+            patch.object(crud.StockLog.objects, "filter", return_value=MagicMock(exists=lambda: stock)),
+            patch.object(crud, "connection", MagicMock(cursor=MagicMock(return_value=cursor))),
+            patch.object(crud, "log_db_error"),
+        )
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        return _call("delete", query=query, user=user), select
+
+    def test_unreferenced_variant_is_deleted_by_deleting_only_that_row(self):
+        row = _row()
+        response, select = self._delete(row)
+        self.assertEqual(response.status_code, 204)
+        row.delete.assert_called_once_with()  # the single locked instance, never a queryset/bulk delete
+        select.return_value.filter.assert_called_once_with(pk=3)
+
+    def test_parent_product_and_sibling_variants_are_never_queried_for_deletion(self):
+        with patch.object(crud.Product.objects, "filter") as products, patch.object(crud.Product.objects, "get") as product_get:
+            response, _ = self._delete(_row())
+        self.assertEqual(response.status_code, 204)
+        products.assert_not_called()
+        product_get.assert_not_called()
+
+    def test_variant_in_order_history_is_kept(self):
+        row = _row()
+        response, _ = self._delete(row, orders=True)
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("order history", response.data["detail"])
+        row.delete.assert_not_called()
+
+    def test_variant_in_customer_carts_is_kept(self):
+        row = _row()
+        response, _ = self._delete(row, cart=2)
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("carts", response.data["detail"])
+        row.delete.assert_not_called()
+
+    def test_variant_with_inventory_history_is_kept(self):
+        row = _row()
+        response, _ = self._delete(row, stock=True)
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("inventory", response.data["detail"])
+        row.delete.assert_not_called()
+
+    def test_unverifiable_cart_check_blocks_deletion(self):
+        row = _row()
+        response, _ = self._delete(row, cart_error=RuntimeError("a_cart missing"))
+        self.assertEqual(response.status_code, 503)
+        row.delete.assert_not_called()
+
+    def test_database_failure_during_delete_is_a_500_not_a_fake_success(self):
+        row = _row(delete=MagicMock(side_effect=RuntimeError("db down")))
+        response, _ = self._delete(row)
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("Nothing was removed", response.data["detail"])
+
+    def test_missing_variant_is_404_and_repeating_a_delete_cannot_delete_anything_else(self):
+        for _ in range(2):  # second request finds nothing; it must not fall through to another row
+            response, select = self._delete(None)
+            self.assertEqual(response.status_code, 404)
+            select.return_value.filter.assert_called_once_with(pk=3)
+
+    def test_missing_or_invalid_id_is_400_and_touches_no_row(self):
+        for query in ("", "?id=abc", "?id="):
+            response, select = self._delete(_row(), query=query)
+            self.assertEqual(response.status_code, 400, query)
+            select.assert_not_called()
+
+    def test_unauthenticated_and_unprivileged_deletes_are_rejected(self):
+        for user in (None, "WAREHOUSE_STAFF", "SALESMAN", "DELIVERY_BOY"):
+            row = _row()
+            response, select = self._delete(row, user=user)
+            self.assertIn(response.status_code, (401, 403), user)
+            select.assert_not_called()
+            row.delete.assert_not_called()
+
+
+class VariantInUseHintTests(SimpleTestCase):
+    def _map(self, ids, orders=(), cart=(), stock=()):
+        cursor = MagicMock()
+        cursor.__enter__.return_value.fetchall.return_value = [(v,) for v in cart]
+        with patch.object(crud.OrderItem.objects, "filter", return_value=MagicMock(values_list=lambda *a, **k: list(orders))), \
+                patch.object(crud.StockLog.objects, "filter", return_value=MagicMock(values_list=lambda *a, **k: list(stock))), \
+                patch.object(crud, "connection", MagicMock(cursor=MagicMock(return_value=cursor))):
+            return crud.VariantCRUDView._in_use_map(ids)
+
+    def test_unreferenced_variants_are_absent_and_empty_input_does_no_queries(self):
+        self.assertEqual(crud.VariantCRUDView._in_use_map([]), {})
+        self.assertEqual(self._map([1, 2]), {})
+
+    def test_every_kind_of_reference_is_reported_in_a_fixed_order(self):
+        result = self._map([1, 2, 3, 4], orders=[2, 3], cart=[3, 4], stock=[4])
+        self.assertEqual(result, {2: "order history", 3: "order history, customer carts", 4: "customer carts, inventory history"})
+
+    def test_a_failed_lookup_gives_no_hint_and_never_breaks_the_list(self):
+        with patch.object(crud.OrderItem.objects, "filter", side_effect=RuntimeError("db down")), patch.object(crud, "log_db_error") as log:
+            self.assertEqual(crud.VariantCRUDView._in_use_map([1]), {})
+        log.assert_called_once()
+
+    def test_list_rows_carry_in_use_and_keep_the_existing_fields(self):
+        rows = [_row(variant_id=1), _row(variant_id=2)]
+        queryset = MagicMock()
+        queryset.filter.return_value = queryset
+        queryset.count.return_value = 2
+        queryset.__getitem__.return_value = rows
+        with patch.object(crud.Variant.objects, "order_by", return_value=queryset), \
+                patch.object(crud.VariantCRUDView, "_in_use_map", return_value={2: "order history"}):
+            response = _call("get")
+        self.assertEqual(response.status_code, 200)
+        first, second = response.data["results"]
+        self.assertEqual((first["in_use"], second["in_use"]), ("", "order history"))
+        for field in ("id", "product_id", "name", "price", "mrp", "quantity", "discount", "gst", "gst_price", "minimum_buying_count"):
+            self.assertIn(field, first)

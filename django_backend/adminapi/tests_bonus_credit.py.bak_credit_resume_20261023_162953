@@ -1,0 +1,45 @@
+from datetime import date
+from decimal import Decimal
+from django.test import SimpleTestCase
+from adminapi.bonus_credit import _legacy_available, _month_count, _money, _monthly_bonus
+
+
+class BonusCreditMathTests(SimpleTestCase):
+    def test_legacy_available_recovers_stale_zero_balance_but_caps_to_earned_unused(self):
+        self.assertEqual(_legacy_available(Decimal("0"), Decimal("0"), Decimal("1188")), Decimal("1188.00"))
+        self.assertEqual(_legacy_available(Decimal("500"), Decimal("200"), Decimal("1188")), Decimal("500.00"))
+        self.assertEqual(_legacy_available(Decimal("500"), Decimal("900"), Decimal("1188")), Decimal("288.00"))
+        self.assertEqual(_legacy_available(Decimal("0"), Decimal("1500"), Decimal("1188")), Decimal("0.00"))
+    def test_monthly_amount_uses_decimal_cents(self):
+        self.assertEqual(_money(Decimal('43200') / Decimal('12')), Decimal('3600.00'))
+
+    def test_month_count_includes_start_month_and_caps_duration(self):
+        self.assertEqual(_month_count(date(2026, 1, 15), date(2026, 1, 15), 12), 1)
+        self.assertEqual(_month_count(date(2026, 1, 15), date(2026, 2, 1), 12), 2)
+        self.assertEqual(_month_count(date(2025, 1, 1), date(2026, 2, 1), 12), 12)
+
+    def test_month_count_before_start_is_zero(self):
+        self.assertEqual(_month_count(date(2026, 2, 1), date(2026, 1, 31), 12), 0)
+
+    def test_purchase_balance_example(self):
+        available = Decimal('600.00') + Decimal('3600.00')
+        purchase = Decimal('2000.00')
+        applied = min(available, purchase)
+        self.assertEqual(applied, Decimal('2000.00'))
+        self.assertEqual(max(Decimal('0'), purchase - applied), Decimal('0'))
+        self.assertEqual(available - applied, Decimal('2200.00'))
+
+    def test_partial_bonus_leaves_payable_amount(self):
+        available = Decimal('4200.00')
+        purchase = Decimal('5000.00')
+        applied = min(available, purchase)
+        self.assertEqual(purchase - applied, Decimal('800.00'))
+        self.assertEqual(available - applied, Decimal('0.00'))
+
+    def test_monthly_bonus_depends_on_each_customers_selected_offer(self):
+        # Offer A: ₹30,000 payment at 10% gives ₹3,000/month.
+        self.assertEqual(_monthly_bonus(Decimal('30000'), Decimal('10')), Decimal('3000.00'))
+        # Offer B: ₹50,000 payment at 12% gives ₹6,000/month.
+        self.assertEqual(_monthly_bonus(Decimal('50000'), Decimal('12')), Decimal('6000.00'))
+        # Same payment with a different bonus percentage must change the release amount.
+        self.assertEqual(_monthly_bonus(Decimal('30000'), Decimal('5')), Decimal('1500.00'))

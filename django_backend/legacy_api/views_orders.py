@@ -1,0 +1,332 @@
+"""Order endpoints ported from the PHP Flutter API, preserving customer scoping."""
+from decimal import Decimal, ROUND_HALF_UP
+import secrets
+
+from django.conf import settings
+from django.db import IntegrityError, connection, transaction
+from adminapi.cart_discount import calculate_cart_discount, load_cart_discount_config
+from legacydb import monthly_credit as mc
+from legacydb.discount_rules import customer_has_vip, product_has_discount
+from legacydb.gst_rules import calculate_gst_amount
+from legacydb.order_gst_snapshot import insert_clause, line_snapshot, order_gst, select_fragment, snapshot_available
+from .common import as_dict, base_url, legacy_image_url, execute, fetchall, fetchone, jr, json_body, legacy_view
+
+def _insert_checkout_with_unique_id(user, total_amount, username=""):
+    """Insert a six-digit checkout ID safely; retry only primary-key collisions."""
+    for _ in range(20):
+        candidate = secrets.randbelow(900000) + 100000
+        try:
+            # A savepoint lets us retry after a PostgreSQL uniqueness violation without
+            # breaking the surrounding order transaction.
+            with transaction.atomic():
+                execute(
+                    "INSERT INTO zg_checkout (order_id,full_name,address,city,state,postal_code,country,phone,email,"
+                    "total_amount,order_date,status,view,payment_method,shipping_charge,cod_charge,\"user\") "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),'Placed','y','online','60',0,%s)",
+                    [candidate, user["fullname"] or "Unknown Customer", user["address"] or "No Address Provided",
+                     "Unknown", "Unknown", "00000", "Unknown", user["phone"] or "0000000000",
+                     user["email"] or "noemail@example.com", total_amount, username],
+                )
+        except IntegrityError as exc:
+            cause = getattr(exc, "__cause__", None)
+            diag = getattr(cause, "diag", None)
+            if getattr(diag, "constraint_name", None) == "zg_checkout_pkey":
+                continue
+            raise
+        return candidate
+    raise RuntimeError("Could not allocate unique order ID after 20 attempts")
+
+
+def apply_order_credit(user_id, order_id, order_total):
+    """Record this order's monthly-credit deduction in the ledger. MUST run inside the order-placement transaction.
+
+    Locks the customer row, then the allocation row, recomputes this month's remaining credit from the ledger and
+    deducts min(remaining, order_total) once for this order (a zero-amount row marks an order that got no credit),
+    so the next cart, summary or order always sees the reduced balance. Any later failure rolls the deduction back
+    together with the order. Returns None when the customer has no ACTIVE allocation.
+    """
+    if user_id is None:
+        return None
+    with connection.cursor() as cursor:
+        # order_post already holds SELECT ... FOR UPDATE on this users.id row.
+        return mc.commit_order_credit(cursor, order_id, int(user_id), order_total, record_zero=True)
+
+
+@legacy_view()
+def orders(request):
+    if request.method not in ("GET", "POST"):
+        return jr({"status": "error", "message": "Method not allowed"}, 405)
+    username = request.legacy_user["username"]
+    user = fetchone("SELECT email FROM users WHERE username=%s LIMIT 1", [username])
+    if not user:
+        return jr({"status": "error", "message": "User not found"}, 404)
+    email = user["email"]
+    try:
+        skip = max(0, int(request.GET.get("skip", 0)))
+        limit = min(100, max(1, int(request.GET.get("limit", 30))))
+    except (ValueError, TypeError):
+        return jr({"status": "error", "message": "Invalid pagination"}, 400)
+    count = fetchone("SELECT COUNT(*) AS total_orders FROM zg_checkout WHERE email=%s", [email])
+    rows = fetchall(
+        "SELECT o.order_id,DATE(o.order_date) AS order_date,o.status,oi.product_id,oi.product_name,"
+        "oi.variant_name,oi.quantity,oi.price,oi.total_price,"
+        "COALESCE((SELECT image_path FROM zg_product_images WHERE product_id=oi.product_id AND main='1' LIMIT 1),"
+        "(SELECT image_path FROM zg_product_images WHERE product_id=oi.product_id LIMIT 1)) AS image_path "
+        "FROM zg_checkout o INNER JOIN zg_order_items oi ON o.order_id=oi.order_id "
+        "WHERE o.email=%s ORDER BY o.order_date DESC,o.order_id DESC,oi.item_id ASC LIMIT %s OFFSET %s",
+        [email, limit, skip],
+    )
+    mapped = {}
+    for row in rows:
+        oid = int(row["order_id"])
+        if oid not in mapped:
+            mapped[oid] = {"order_id": oid, "order_date": row["order_date"],
+                           "status": row["status"] or "Unknown", "total_qty": 0, "products": []}
+        image = legacy_image_url(row["image_path"], request, "https://projects.teleber.com/stokit/pro-imgs/default.jpg")
+        product = {"product_id": int(row["product_id"] or 0), "product_name": row["product_name"] or "Unknown Product",
+                   "qty": int(row["quantity"] or 0), "image_url": image}
+        if row["variant_name"]:
+            product["variant_name"] = row["variant_name"]
+        mapped[oid]["products"].append(product)
+        mapped[oid]["total_qty"] += int(row["quantity"] or 0)
+    return jr({"orders": list(mapped.values()), "total_orders": int((count or {}).get("total_orders") or 0),
+               "skip": skip, "limit": limit})
+
+
+@legacy_view()
+def order_cancel(request):
+    if request.method != "POST":
+        return jr({"status": "error", "message": "Method not allowed"}, 405)
+    data = as_dict(json_body(request))
+    raw_id = data.get("order_id", request.POST.get("order_id", ""))
+    if not str(raw_id).isdigit() or int(raw_id) <= 0:
+        return jr({"status": "error", "message": "Invalid or missing order_id"}, 400)
+    order_id = int(raw_id)
+    username = request.legacy_user["username"]
+    user = fetchone("SELECT phone,email FROM users WHERE username=%s LIMIT 1", [username])
+    if not user:
+        return jr({"status": "error", "message": "User not found"}, 404)
+    with transaction.atomic():
+        order = fetchone("SELECT order_id,phone,email,status FROM zg_checkout WHERE order_id=%s FOR UPDATE", [order_id])
+        if not order:
+            return jr({"status": "error", "message": "Order not found"}, 404)
+        owns = bool(user["phone"] and user["phone"] == order["phone"]) or bool(user["email"] and user["email"] == order["email"])
+        if not owns:
+            return jr({"status": "error", "message": "Forbidden: order does not belong to you"}, 403)
+        current = str(order["status"] or "").lower()
+        if current == "cancelled":
+            return jr({"status": "success", "message": "Order is already cancelled", "order_id": str(order_id), "status": "Cancelled"})
+        if current in ("shipped", "delivered", "out for delivery", "completed"):
+            return jr({"status": "error", "message": f"Order cannot be cancelled at this stage (status: {order['status']})"}, 409)
+        execute("UPDATE zg_checkout SET status=%s WHERE order_id=%s", ["Cancelled", order_id])
+    return jr({"status": "success", "message": "Order cancelled successfully", "order_id": str(order_id), "order_status": "Cancelled"})
+
+
+@legacy_view()
+def order_post(request):
+    if request.method != "POST":
+        return jr({"status": "error", "message": "Only POST method allowed"}, 405)
+    username = request.legacy_user["username"]
+    with transaction.atomic():
+        user = fetchone(
+            "SELECT id,fullname,phone,address,email,delivery_charges,vip_discount,vip_percentage,gst_percentage "
+            "FROM users WHERE username=%s LIMIT 1 FOR UPDATE",
+            [username],
+        )
+        if not user:
+            return jr({"status": "error", "message": "User not found"}, 404)
+        if not str(user.get("phone") or "").strip() or not str(user.get("address") or "").strip():
+            return jr({"status": "error", "message": "Add a delivery address and phone number before placing the order."}, 400)
+
+        cart = fetchall(
+            "SELECT c.product_id,c.variant_id,c.qty,p.product_name,p.has_disc,p.discount_percent,"
+            "p.discount_value,p.product_discount,p.gst_applicable AS product_gst_applicable,"
+            "COALESCE(v.variant_name, CASE WHEN c.variant_id=0 THEN '' END) AS variant_name, "
+            "COALESCE(v.variant_price, CASE WHEN c.variant_id=0 THEN p.product_price END) AS price, "
+            "CASE WHEN c.variant_id=0 THEN COALESCE(p.gst_price, 0) ELSE COALESCE(v.gst_price, 0) END AS gst_price, "
+            "COALESCE(v.gst, 'N') AS variant_gst, "
+            "COALESCE(v.quantity, CASE WHEN c.variant_id=0 THEN 1 END) AS stock_qty "
+            "FROM a_cart c LEFT JOIN zg_product p ON c.product_id=p.product_id "
+            "LEFT JOIN zg_variant v ON c.variant_id=v.variant_id "
+            "WHERE c.username=%s FOR UPDATE OF c",
+            [username],
+        )
+        if not cart:
+            return jr({"status": "error", "message": "Cart is empty"}, 400)
+
+        money_quantum = Decimal("0.01")
+        total_amount = Decimal("0.00")
+        total_discount = Decimal("0.00")
+        gst_total = Decimal("0.00")
+        items, promo_lines = [], []
+        cart_config = load_cart_discount_config()  # persisted admin settings; no hardcoded fallback
+        for row in cart:
+            product_id = int(row["product_id"] or 0)
+            variant_id = int(row["variant_id"] or 0)
+            qty = int(row["qty"] or 0)
+            product_name = str(row.get("product_name") or "").strip()
+            if not product_name or (variant_id != 0 and row.get("variant_name") is None):
+                return jr({"status": "error", "message": "A product or variant in your cart is no longer available. Refresh your cart."}, 409)
+            if qty <= 0:
+                return jr({"status": "error", "message": f"Invalid quantity for {product_name}. Update your cart and try again."}, 400)
+            if variant_id != 0:
+                stock_qty = int(row.get("stock_qty") or 0)
+                if stock_qty <= 0:
+                    return jr({"status": "error", "message": f"{product_name} is out of stock. Remove it from your cart to continue."}, 409)
+                if qty > stock_qty:
+                    return jr({"status": "error", "message": f"Only {stock_qty} unit(s) of {product_name} are available. Update the quantity to continue."}, 409)
+
+            price = Decimal(str(row.get("price") or 0))
+            has_discount = product_has_discount(
+                has_disc=row.get("has_disc"),
+                discount_percent=row.get("discount_percent"),
+                discount_value=row.get("discount_value"),
+                product_discount=row.get("product_discount"),
+            )
+            pct = Decimal("0")
+            if has_discount and int(row.get("has_disc") or 0) == 1:
+                pct = Decimal(str(row.get("discount_percent") or 0))
+                discount_value = Decimal(str(row.get("discount_value") or 0))
+                if pct <= 0 and discount_value > 0 and price > 0:
+                    pct = discount_value / price * Decimal("100")
+            pct = min(Decimal("100"), max(Decimal("0"), pct))
+            subtotal = (price * qty).quantize(money_quantum, rounding=ROUND_HALF_UP)
+            discount = (subtotal * pct / Decimal("100")).quantize(money_quantum, rounding=ROUND_HALF_UP)
+            line_total = (subtotal - discount).quantize(money_quantum, rounding=ROUND_HALF_UP)
+            # Same shared rule as the cart/checkout: configured GST amount x qty x the customer's saved percentage.
+            # The percentage is read from the locked users row above, never from the request.
+            snapshot = line_snapshot(
+                quantity=qty,
+                product_gst_applicable=row.get("product_gst_applicable"),
+                variant_gst=row.get("variant_gst"), is_variant=variant_id != 0,
+                configured_amount=row.get("gst_price"),
+                customer_gst_percentage=user.get("gst_percentage"),
+            )
+            gst_total += snapshot["gst_amount"]
+            items.append((product_id, variant_id, product_name, row.get("variant_name") or "", qty, price, discount, line_total, snapshot))
+            # Eligibility input for the shared cart-promotion rule: the pre-discount line amount, flagged when the
+            # product already carries its own discount (same split the cart uses for discount_available).
+            promo_lines.append({"amount": subtotal, "product_discounted": bool(has_discount) or discount > 0})
+            total_amount += line_total
+            total_discount += discount
+
+        if not items:
+            return jr({"status": "error", "message": "Cart is empty"}, 400)
+
+        # Minimum-order eligibility is checked before credit; credit changes the payable amount only.
+        gst_total = gst_total.quantize(money_quantum, rounding=ROUND_HALF_UP)
+        delivery = Decimal(str(user.get("delivery_charges") or 0))
+        vip_applied = customer_has_vip(user.get("vip_discount"), user.get("vip_percentage"))
+        vip_percentage = Decimal(str(user.get("vip_percentage") or 0)) if vip_applied else Decimal("0")
+        # Cart promotion: the SAME persisted settings and shared calculation the cart screen uses (read fresh inside
+        # this transaction). A storage failure raises and rolls the order back via legacy_view's sanitized 500;
+        # there is no hardcoded fallback. The discount is applied exactly once, to the order's items subtotal.
+        promo = calculate_cart_discount(
+            promo_lines, cart_config["enabled"], cart_config["minimum_subtotal"],
+            cart_config["fixed_discount_amount"], vip_applied=vip_applied)
+        cart_discount = promo["applied_discount"] if promo["applied_discount"] > 0 else Decimal("0.00")
+        total_amount = max(Decimal("0.00"), total_amount - cart_discount)
+        total_discount += cart_discount
+        vip_discount = (total_amount * vip_percentage / Decimal("100")).quantize(money_quantum, rounding=ROUND_HALF_UP)
+        order_total_before_credit = max(Decimal("0"), total_amount + gst_total + delivery - vip_discount)
+        minimum_order_value = Decimal(str(settings.STOKIT_MIN_ORDER_VALUE))
+        if order_total_before_credit < minimum_order_value:
+            remaining = (minimum_order_value - order_total_before_credit).quantize(money_quantum, rounding=ROUND_HALF_UP)
+            return jr({
+                "status": "error",
+                "message": f"Add items worth ₹{remaining:.2f} to place the order.",
+                "minimum_order_remaining": float(remaining),
+            }, 400)
+
+        order_id = _insert_checkout_with_unique_id(user, total_amount, username)
+        store_snapshot = snapshot_available()
+        for product_id, variant_id, product_name, variant_name, qty, price, discount, line_total, snapshot in items:
+            extra_cols, extra_marks, extra_params = insert_clause(snapshot) if store_snapshot else ("", "", [])
+            execute(
+                "INSERT INTO zg_order_items (order_id,product_id,variant_id,product_name,variant_name,quantity,price,discount,total_price" + extra_cols + ") "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s" + extra_marks + ")",
+                [order_id, product_id, variant_id, product_name, variant_name, qty, price, discount, line_total] + extra_params,
+            )
+        # Authoritative order amount (same figure the minimum-order rule used). The credit is committed in this
+        # transaction, after the order rows exist, so a failure anywhere above or below leaves no deduction behind.
+        apply_order_credit(user.get("id"), order_id, order_total_before_credit.quantize(money_quantum, rounding=ROUND_HALF_UP))
+        execute("DELETE FROM a_cart WHERE username=%s", [username])
+    return jr({"status": "success", "message": "Order logged successfully", "order_id": str(order_id),
+               "total_amount": float(total_amount), "discount_amount": float(total_discount)})
+
+
+@legacy_view()
+def order_details(request):
+    data = as_dict(json_body(request))
+    raw_id = data.get("order_id", request.GET.get("order_id", ""))
+    if not str(raw_id).isdigit() or int(raw_id) <= 0:
+        return jr({"status": "error", "message": "order_id is required"}, 400)
+    order_id = int(raw_id)
+    username = request.legacy_user["username"]
+    user = fetchone("SELECT email,gst_percentage,delivery_charges,vip_discount,vip_percentage FROM users WHERE username=%s LIMIT 1", [username])
+    if not user:
+        return jr({"status": "error", "message": "User not found"}, 404)
+    rows = fetchall(
+        "SELECT o.order_id,DATE(o.order_date) AS order_date,o.status,o.total_amount,o.full_name,o.phone,o.address,"
+        "o.city,o.state,o.postal_code,o.country,o.payment_method,o.shipping_charge,o.cod_charge,"
+        "oi.item_id,oi.product_id,oi.variant_id,oi.product_name,oi.variant_name,oi.quantity,oi.price,oi.discount,oi.total_price," + select_fragment("oi") + ","
+        "p.gst_applicable AS product_gst_applicable,"
+        "CASE WHEN oi.variant_id=0 THEN COALESCE(p.gst_price,0) ELSE COALESCE(v.gst_price,0) END AS configured_gst_amount,COALESCE(v.gst,'N') AS variant_gst,"
+        "COALESCE((SELECT image_path FROM zg_product_images WHERE product_id=oi.product_id AND main='1' LIMIT 1),"
+        "(SELECT image_path FROM zg_product_images WHERE product_id=oi.product_id LIMIT 1)) AS image_path "
+        "FROM zg_checkout o INNER JOIN zg_order_items oi ON o.order_id=oi.order_id "
+        "LEFT JOIN zg_product p ON p.product_id=oi.product_id LEFT JOIN zg_variant v ON v.variant_id=oi.variant_id AND v.product_id=oi.product_id "
+        "WHERE o.order_id=%s AND o.email=%s ORDER BY oi.item_id ASC", [order_id, user["email"]])
+    if not rows:
+        return jr({"status": "error", "message": "Order not found"}, 404)
+    first = rows[0]
+    products, total_qty, discounted_subtotal, non_discounted_subtotal = [], 0, 0.0, 0.0
+    for row in rows:
+        discount = float(row["discount"] or 0)
+        line_total = float(row["total_price"] or 0)
+        if discount > 0:
+            discounted_subtotal += line_total
+        else:
+            non_discounted_subtotal += line_total
+        products.append({"product_id": int(row["product_id"] or 0), "product_name": row["product_name"] or "Unknown Product",
+            "qty": int(row["quantity"] or 0), "price": float(row["price"] or 0), "discount": discount,
+            "total_price": line_total, "image_url": legacy_image_url(row["image_path"], request, "https://projects.teleber.com/stokit/pro-imgs/default.jpg"),
+            **({"variant_name": row["variant_name"]} if row["variant_name"] else {})})
+        total_qty += int(row["quantity"] or 0)
+    subtotal = discounted_subtotal + non_discounted_subtotal * .9
+    billed = float(user["gst_percentage"] or 0)
+    # Stored order-time snapshot; current product/variant/customer GST settings are never used for an existing
+    # order. The recalculation below runs ONLY before the snapshot columns exist (pre-migration) and uses the
+    # same shared rule with the customer's currently saved percentage.
+    gst_total, gst_source = order_gst(rows, lambda r: calculate_gst_amount(
+        quantity=r.get("quantity"),
+        product_gst_applicable=r.get("product_gst_applicable"),
+        variant_gst=r.get("variant_gst"), is_variant=int(r.get("variant_id") or 0) != 0,
+        configured_amount=r.get("configured_gst_amount"),
+        customer_gst_percentage=user.get("gst_percentage")))
+    gst = float(gst_total)
+    gst_pct = gst / subtotal * 100 if subtotal > 0 else 0.0
+    vip_pct = float(user.get("vip_percentage") or 0) if customer_has_vip(user.get("vip_discount"), user.get("vip_percentage")) else 0.0
+    vip = subtotal * vip_pct / 100
+    delivery = float(user["delivery_charges"] or 0)
+    order = {"order_id": int(first["order_id"]), "order_date": first["order_date"], "status": first["status"] or "Unknown",
+        "total_amount": float(first["total_amount"] or 0), "customer_details": {"full_name": first["full_name"] or "Unknown",
+        "phone": first["phone"] or "N/A", "address": first["address"] or "N/A", "city": first["city"] or "N/A",
+        "state": first["state"] or "N/A", "postal_code": first["postal_code"] or "N/A", "country": first["country"] or "N/A"},
+        "payment_details": {"payment_method": first["payment_method"] or "online", "shipping_charge": float(first["shipping_charge"] or 0),
+        "cod_charge": float(first["cod_charge"] or 0)}, "products": products, "total_qty": total_qty}
+    pricing = {"currency": "₹", "discounted_items_subtotal": round(discounted_subtotal, 2),
+        "non_discounted_items_subtotal": round(non_discounted_subtotal, 2),
+        "items_subtotal_raw": round(discounted_subtotal + non_discounted_subtotal, 2), "cart_discount_percentage": 10,
+        "cart_discount": round(non_discounted_subtotal * .1, 2), "non_discounted_subtotal_after_cart_discount": round(non_discounted_subtotal * .9, 2),
+        "subtotal": round(subtotal, 2), "customer_billed_percentage": round(billed, 2), "gst_percentage": round(gst_pct, 2),
+        "gst_source": gst_source, "gst_amount": round(gst, 2), "total_with_gst": round(subtotal + gst, 2), "delivery_charge": round(delivery, 2),
+        "credit_release": 3000, "vip_discount_percentage": round(vip_pct, 2), "vip_discount": round(vip, 2),
+        "grand_total": round(subtotal + gst + delivery - 3000 - vip, 2)}
+    timeline = {"Placed": str(first["order_date"]), "Processing": "", "Shipped": "", "Delivered": "", "Fulfilled": ""}
+    for state in ("Processing", "Shipped", "Delivered", "Fulfilled"):
+        event = fetchone("SELECT to_char(changed_at, 'Mon DD, YYYY') AS changed_at FROM zg_order_status_history WHERE order_id=%s AND LOWER(status)=%s ORDER BY changed_at LIMIT 1",
+                         [order_id, state.lower()])
+        if event:
+            timeline[state] = event["changed_at"] or ""
+    return jr({"order": order, "pricing": pricing, "delivery_status": timeline})

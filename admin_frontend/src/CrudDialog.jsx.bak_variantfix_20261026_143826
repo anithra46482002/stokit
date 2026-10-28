@@ -1,0 +1,228 @@
+import React from 'react';
+import { uploadImage } from './api';
+import SafeImage from './SafeImage';
+import { validateRewardImageFile } from './uiUtils';
+
+const IMAGE_FIELDS = ['image', 'image_path'];
+
+function ImagePathInput({ field, value, onChange }) {
+  const [state, setState] = React.useState({ busy: false, error: '' });
+  async function pick(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setState({ busy: true, error: '' });
+    try {
+      const result = await uploadImage(file);
+      onChange({ target: { type: 'text', value: result.image_path } });
+      setState({ busy: false, error: '' });
+    } catch (err) {
+      const data = err.response?.data;
+      setState({ busy: false, error: data?.file || data?.detail || err.message || 'Upload failed' });
+    }
+  }
+  return <span className="image-field">
+    <input type="text" value={value == null ? '' : value} required={Boolean(field.required)} onChange={onChange} />
+    <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={pick} disabled={state.busy} aria-label={`Upload ${field.label}`} />
+    {state.busy && <small role="status">Uploading.</small>}
+    {state.error && <small className="error" role="alert">{state.error}</small>}
+  </span>;
+}
+
+function RewardImageInput({ field, value, onChange }) {
+  const [state, setState] = React.useState({ busy: false, error: "", previewUrl: "" });
+  const preview = state.previewUrl || field.currentImageUrl || (String(value || "").startsWith("https://") || String(value || "").startsWith("http://") ? value : "");
+  async function pick(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    const validationError = validateRewardImageFile(file);
+    if (validationError) {
+      setState({ busy: false, error: validationError, previewUrl: "" });
+      return;
+    }
+    setState({ busy: true, error: "", previewUrl: "" });
+    try {
+      const result = await uploadImage(file);
+      onChange({ target: { type: "text", value: result.image_path } });
+      setState({ busy: false, error: "", previewUrl: result.url || "" });
+    } catch (err) {
+      const data = err.response?.data;
+      setState({ busy: false, error: data?.file || data?.detail || err.message || "Upload failed", previewUrl: "" });
+    }
+  }
+  return <span className="image-field reward-image-field">
+    {preview && <SafeImage className="sk-thumb reward-image-preview" src={preview} alt="Reward image preview" />}
+    <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={pick} disabled={state.busy} aria-label="Upload reward image" />
+    <small className="field-help">Optional. Select a JPG, PNG, GIF or WEBP image (maximum 5 MB). The uploaded path is saved with the target scheme.</small>
+    {state.busy && <small role="status">Uploading image...</small>}
+    {state.error && <small className="error" role="alert">{state.error}</small>}
+  </span>;
+}
+
+function GooglePlaceInput({ value, latitude, longitude, onFieldChange }) {
+  const inputRef = React.useRef(null);
+  const [status, setStatus] = React.useState("");
+  const [suggestions, setSuggestions] = React.useState([]);
+  const [searching, setSearching] = React.useState(false);
+  const [provider, setProvider] = React.useState(() => import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? "none" : "osm");
+
+  React.useEffect(() => {
+    const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!key) return undefined;
+    let cancelled = false;
+    const init = () => {
+      if (cancelled || !inputRef.current) return;
+      if (!window.google?.maps?.places) {
+        setProvider("osm");
+        setStatus("Google Places is unavailable or not enabled for this key. Using OpenStreetMap place search.");
+        return;
+      }
+      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+        fields: ["address_components", "formatted_address", "geometry", "name", "place_id"],
+        types: ["geocode"],
+      });
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        const point = place.geometry?.location;
+        if (!point) {
+          setStatus("Select a suggested address to get coordinates.");
+          return;
+        }
+        const parts = place.address_components || [];
+        const part = (type) => parts.find((item) => item.types.includes(type))?.long_name || "";
+        onFieldChange("address", place.formatted_address || place.name || inputRef.current.value);
+        onFieldChange("place", part("locality") || part("sublocality") || part("administrative_area_level_2") || place.name || "");
+        onFieldChange("state", part("administrative_area_level_1"));
+        onFieldChange("pincode", part("postal_code"));
+        onFieldChange("latitude", point.lat());
+        onFieldChange("longitude", point.lng());
+        setSuggestions([]);
+        setStatus("Coordinates filled from Google Maps.");
+      });
+      setProvider("google");
+      setStatus("Type an address and select a Google Maps suggestion.");
+    };
+    if (window.google?.maps?.places) {
+      init();
+      return () => { cancelled = true; };
+    }
+    let script = document.querySelector("script[data-google-maps-places]");
+    const onLoad = () => init();
+    const onError = () => {
+      if (!cancelled) {
+        setProvider("osm");
+        setStatus("Google Maps failed to load. Using free OpenStreetMap place search instead.");
+      }
+    };
+    if (!script) {
+      script = document.createElement("script");
+      script.dataset.googleMapsPlaces = "true";
+      script.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places";
+      script.async = true;
+      script.defer = true;
+      script.addEventListener("load", onLoad, { once: true });
+      script.addEventListener("error", onError, { once: true });
+      document.head.appendChild(script);
+    } else {
+      script.addEventListener("load", onLoad, { once: true });
+      script.addEventListener("error", onError, { once: true });
+    }
+    return () => { cancelled = true; };
+  }, [onFieldChange]);
+
+  React.useEffect(() => {
+    if (provider !== "osm" || !String(value || "").trim() || String(value).trim().length < 3) return undefined;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      if (!cancelled) setSearching(true);
+      try {
+        const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&q=" + encodeURIComponent(value);
+        const response = await fetch(url, { headers: { Accept: "application/json" } });
+        if (!response.ok) throw new Error("Place search request failed");
+        const results = await response.json();
+        if (!cancelled) {
+          const rows = Array.isArray(results) ? results : [];
+          setSuggestions(rows);
+          setStatus(rows.length ? "Choose a suggestion to save its coordinates." : "No matching places found. Try a more complete address.");
+        }
+      } catch {
+        if (!cancelled) {
+          setSuggestions([]);
+          setStatus("Place search is unavailable. You can enter coordinates manually.");
+        }
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [provider, value]);
+
+  function chooseSuggestion(item) {
+    const address = item.address || {};
+    const place = address.city || address.town || address.village || address.suburb || address.county || item.name || "";
+    const state = address.state || address.region || "";
+    const pincode = address.postcode || "";
+    onFieldChange("address", item.display_name || value);
+    onFieldChange("place", place);
+    onFieldChange("state", state);
+    onFieldChange("pincode", pincode);
+    onFieldChange("latitude", Number(item.lat));
+    onFieldChange("longitude", Number(item.lon));
+    setSuggestions([]);
+    setStatus("Coordinates filled from OpenStreetMap. Verify the address before saving.");
+  }
+
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+  const mapUrl = hasCoordinates ? "https://www.openstreetmap.org/?mlat=" + encodeURIComponent(lat) + "&mlon=" + encodeURIComponent(lon) + "#map=16/" + encodeURIComponent(lat) + "/" + encodeURIComponent(lon) : "";
+  return <span className="google-place-field">
+    <input ref={inputRef} type="text" value={value ?? ""} placeholder="Type address or place name" autoComplete="off" aria-label="Warehouse address or place" onChange={(event) => { const nextValue = event.target.value; onFieldChange("address", nextValue); onFieldChange("latitude", ""); onFieldChange("longitude", ""); if (nextValue.trim().length < 3) setSuggestions([]); }} />
+    {provider === "osm" && suggestions.length > 0 && <span className="place-suggestions" role="listbox" aria-label="Place suggestions">
+      {suggestions.map((item) => <button key={item.place_id} type="button" role="option" className="place-suggestion" onClick={() => chooseSuggestion(item)}>{item.display_name}</button>)}
+    </span>}
+    {provider === "osm" && <small className="field-help">Search powered by OpenStreetMap contributors.</small>}
+    <small className="field-help" role="status">{searching ? "Searching places..." : status}</small>
+    {hasCoordinates && <span className="place-map-preview"><a href={mapUrl} target="_blank" rel="noopener noreferrer">View selected location on map ({lat.toFixed(6)}, {lon.toFixed(6)})</a><iframe title="Selected place map preview" loading="lazy" width="100%" height="180" src={"https://www.openstreetmap.org/export/embed.html?bbox=" + encodeURIComponent((lon - 0.01) + "," + (lat - 0.01) + "," + (lon + 0.01) + "," + (lat + 0.01)) + "&layer=mapnik&marker=" + encodeURIComponent(lat + "," + lon)} /></span>}
+  </span>;
+}
+function DiscountBannerInput({ field, onChange }) {
+  const existing = field.existingImages || [];
+  const selected = field.selectedFiles || [];
+  return <span className="product-image-input discount-banner-input">
+    <input type="file" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" multiple onChange={(event) => { onChange({ target: { type: "file", value: Array.from(event.target.files || []) } }); event.target.value = ""; }} />
+    <small className="field-help">Select up to 10 JPG, JPEG, PNG, GIF or WEBP images. Maximum 5 MB per image.</small>
+    {existing.length > 0 && <div className="discount-banner-list"><strong>Existing banners</strong>{existing.map((path) => <div className="discount-banner-item" key={path}><span>{path}</span><button type="button" onClick={() => onChange({ target: { type: "remove-existing-banner", value: path } })}>Remove</button></div>)}</div>}
+    {selected.length > 0 && <div className="discount-banner-list"><strong>Selected uploads</strong>{selected.map((file, index) => <div className="discount-banner-item" key={file.name + file.size + index}><span>{file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)</span><button type="button" onClick={() => onChange({ target: { type: "remove-selected-banner", value: index } })}>Remove</button></div>)}</div>}
+  </span>;
+}
+
+function FieldInput({ field, value, onChange, onFieldChange }) {
+  if (field.type === "banner-files") return <DiscountBannerInput field={field} onChange={onChange} />;
+  if (field.key === "address" && field.googlePlaces) {
+    return <GooglePlaceInput value={value} latitude={field.latitude} longitude={field.longitude} onFieldChange={onFieldChange} />;
+  }
+  if (field.options) return <select required={Boolean(field.required)} disabled={Boolean(field.disabled)} value={value == null || value === '' ? field.options[0][0] : value} onChange={onChange}>{field.options.map((option) => <option key={option[0]} value={option[0]}>{option[1]}</option>)}</select>;
+  if (field.type === 'file') return <span className="product-image-input">{field.currentImageUrl && <SafeImage className="sk-thumb product-image-preview" src={field.currentImageUrl} alt="Current product" />}<input type="file" accept={field.accept || 'image/*'} multiple={Boolean(field.multiple)} onChange={onChange} /><small>Optional. Choose a replacement only if you want to change the current image.</small></span>;
+  if (field.type === 'reward-image') return <RewardImageInput field={field} value={value} onChange={onChange} />;
+  if (field.type === 'textarea') return <textarea required={Boolean(field.required)} value={value || ''} onChange={onChange} />;
+  if (field.type === 'checkbox') return <input type="checkbox" checked={Boolean(value)} onChange={onChange} />;
+  if (IMAGE_FIELDS.includes(field.key)) return <ImagePathInput field={field} value={value} onChange={onChange} />;
+  return <input type={field.type || 'text'} value={value == null ? '' : value} required={Boolean(field.required)} min={field.min} step={field.step} aria-invalid={field.error ? true : undefined} onChange={onChange} />;
+}
+
+export default function CrudDialog({ title, fields, value, busy, error, onClose, onChange, onSubmit, saveDisabled = false, retry = null }) {
+  if (!value) return null;
+  return <div className="modal-backdrop"><section className="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+    <div className="page-heading"><h2 id="editor-title">{title}</h2><button type="button" aria-label="Close dialog" onClick={onClose} disabled={busy}>Close</button></div>
+    {error && <p className="error" role="alert">{error}</p>}
+    <form onSubmit={onSubmit}><div className="form-grid">{fields.map((field) => <label key={field.key}><span>{field.label}{field.required&&<span className="required-mark" aria-hidden="true"> *</span>}</span><FieldInput field={field} value={value[field.key]} onFieldChange={onChange} onChange={(event) => onChange(event.target.type === 'remove-existing-banner' ? 'remove_discount_banner' : event.target.type === 'remove-selected-banner' ? 'remove_selected_discount_banner' : field.key, event.target.type === 'remove-existing-banner' || event.target.type === 'remove-selected-banner' ? event.target.value : field.type === 'banner-files' ? event.target.value : field.type === 'file' ? (field.multiple ? Array.from(event.target.files || []) : (event.target.files?.[0] || null)) : event.target.type === 'checkbox' ? event.target.checked : event.target.value)} />{field.help && <small className="field-help">{field.help}</small>}{field.error && <small className="error" role="alert">{field.error}</small>}</label>)}</div>
+      <div className="button-row"><button className="primary-action" disabled={busy || saveDisabled}>{busy ? 'Saving.' : 'Save changes'}</button>{retry && <button type="button" onClick={retry.onClick} disabled={busy}>{retry.label}</button>}<button type="button" onClick={onClose} disabled={busy}>Cancel</button></div>
+    </form>
+  </section></div>;
+}
+

@@ -1,0 +1,11 @@
+import React from 'react';
+
+// <img> that shows a neutral placeholder instead of a broken-image icon when the URL is
+// missing or fails to load. Resets automatically when the url changes.
+export default function SafeImage({ src, alt = '', className = '', fallback = '-', ...rest }) {
+  const [failedSrc, setFailedSrc] = React.useState('');
+  if (!src || failedSrc === src) {
+    return <span className={className + ' sk-img-fallback'} role="img" aria-label={alt ? alt + ' (image unavailable)' : 'Image unavailable'}>{fallback}</span>;
+  }
+  return <img className={className} src={src} alt={alt} loading="lazy" onError={() => setFailedSrc(src)} {...rest} />;
+}

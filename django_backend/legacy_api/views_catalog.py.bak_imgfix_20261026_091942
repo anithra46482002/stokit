@@ -1,0 +1,289 @@
+import json
+import re
+
+from .common import (as_dict, base_url, legacy_image_url, execute, fetchall, fetchone, get_int, jr, json_body, legacy_view,
+                     php_int, php_float, php_round)
+from adminapi.image_urls import image_url as resolve_image_url
+
+PLACEHOLDER = "https://via.placeholder.com/300"
+_URL_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^\s/?#]+", re.I)
+
+
+def _user_warehouse_id(username):
+    u = fetchone("SELECT city FROM users WHERE username = %s", [username])
+    city = u["city"] if u else None
+    w = fetchone("SELECT warehouse_id FROM zg_warehouse WHERE place = %s ORDER BY warehouse_id LIMIT 1", [city])
+    return php_int(w["warehouse_id"]) if w else 0
+
+
+def _fav_flag(username, product_id):
+    return "Y" if fetchone("SELECT id FROM zg_favorites WHERE user_id = %s AND product_id = %s LIMIT 1",
+                           [username, product_id]) else "N"
+
+
+def _banner_image_url(path, request):
+    """Absolute image URL for a slider row.
+
+    Uses the shared resolver so uploads stored under MEDIA_ROOT/uploads are served by this backend
+    (when SERVE_LOCAL_UPLOADS is on), existing absolute URLs are kept, and legacy PHP-hosted files
+    keep the LEGACY_BASE_URL + path contract that Flutter already relies on.
+    """
+    value = str(path or "").strip()
+    if not value:
+        return ""
+    return resolve_image_url(value, request) or (base_url() + value.lstrip("/"))
+
+
+@legacy_view(auth=False)
+def banner(request):
+    skip, limit = get_int(request, "skip", 0), get_int(request, "limit", 30)
+    total = php_int(fetchone("SELECT COUNT(*) AS total FROM zg_slider")["total"])
+    rows = fetchall("SELECT slider_id AS id, image_path FROM zg_slider ORDER BY slider_id DESC LIMIT %s OFFSET %s",
+                    [limit, skip])
+    banners = [{"id": int(r["id"]), "image_url": _banner_image_url(r["image_path"], request)} for r in rows]
+    return jr({"banner": banners, "total": total, "skip": skip, "limit": limit})
+
+
+@legacy_view()
+def category(request):
+    u = fetchone("SELECT category_id FROM users WHERE username = %s", [request.legacy_user["username"]])
+    own = fetchone("SELECT category_name FROM zg_category WHERE category_id = %s",
+                   [php_int(u["category_id"]) if u else 0])
+    own_name = own["category_name"] if own else ""
+    cats = fetchall(
+        "SELECT category_id, category_name, category_image FROM zg_category "
+        "ORDER BY CASE WHEN category_name = %s THEN 0 ELSE 1 END, category_name ASC", [own_name])
+    out = []
+    for c in cats:
+        subs = fetchall("SELECT subcategory_id, subcategory_name, subcategory_image FROM zg_subcategory "
+                        "WHERE category_id = %s ORDER BY subcategory_name", [c["category_id"]])
+        out.append({
+            "id": int(c["category_id"]),
+            "name": c["category_name"],
+            "image_url": base_url() + "/" + (c["category_image"] or ""),  # (double slash is existing behaviour)
+            "subcategories": [{"id": int(s["subcategory_id"]), "name": s["subcategory_name"],
+                               "image_url": s["subcategory_image"] or None} for s in subs],
+        })
+    return jr({"categories": out, "total": len(out), "skip": 0, "limit": 30})
+
+
+@legacy_view()
+def sub_categories(request):
+    data = as_dict(json_body(request)) if request.method == "POST" else request.GET
+    cid = php_int(data.get("sub_category_id")) if data.get("sub_category_id") is not None else 0
+    if cid <= 0:
+        return jr({"status": "error", "message": "Valid category_id is required"}, 400)
+    cat = fetchone("SELECT category_name FROM zg_category WHERE category_id = %s", [cid])
+    rows = fetchall("SELECT subcategory_id, subcategory_name, subcategory_image FROM zg_subcategory "
+                    "WHERE category_id = %s ORDER BY subcategory_name ASC", [cid])
+    products = []
+    for r in rows:
+        img = r["subcategory_image"]
+        if img and not _URL_RE.match(img):
+            img = base_url() + img.lstrip("/")
+        products.append({"id": int(r["subcategory_id"]), "product_name": r["subcategory_name"],
+                         "image_url": img, "price": 0, "discount": 0})
+    return jr({"category_name": cat["category_name"] if cat else "", "products": products})
+
+
+@legacy_view()
+def get_category(request):
+    """POST /api/getCategory. Despite the key name `category_id`, the value is a SUBCATEGORY id."""
+    data = as_dict(json_body(request))
+    sid = php_int(data.get("category_id")) if data.get("category_id") is not None else 0
+    if sid <= 0:
+        return jr({"status": "error", "message": "Valid category_id (subcategory_id) is required"}, 400)
+    sub = fetchone("SELECT subcategory_name FROM zg_subcategory WHERE subcategory_id = %s LIMIT 1", [sid])
+    if not sub:
+        return jr({"status": "error", "message": "Subcategory not found"}, 404)
+    rows = fetchall(
+        "SELECT p.product_id, p.product_name, p.product_price, p.product_discount, pi.image_path "
+        "FROM zg_product p LEFT JOIN zg_product_images pi ON pi.product_id = p.product_id AND pi.main = '1' "
+        "WHERE p.subcategory_id = %s ORDER BY p.product_id ASC", [sid])
+    products = [{
+        "id": int(r["product_id"]), "product_name": r["product_name"],
+        "image_url": legacy_image_url(r["image_path"], request),
+        "price": float(r["product_price"]),
+        "discount": float(r["product_discount"]) if r["product_discount"] is not None else 0.0,
+    } for r in rows]
+    return jr({"category_name": sub["subcategory_name"], "products": products})
+
+
+@legacy_view()
+def search(request):
+    # Keep the original PHP GET contract and additionally accept the current Flutter
+    # SearchRepository POST filter shape without requiring a Flutter source change.
+    if request.method not in ("GET", "POST"):
+        return jr({"status": "error", "message": "Method not allowed"}, 405)
+    is_flutter_post = request.method == "POST"
+    data = as_dict(json_body(request)) if is_flutter_post else request.GET
+    try:
+        skip = int(data.get("skip", 0))
+        limit = int(data.get("limit", 30))
+    except (TypeError, ValueError):
+        return jr({"status": "error", "message": "Invalid pagination"}, 400)
+    skip = max(skip, 0)
+    if limit <= 0:
+        limit = 30
+    if is_flutter_post:
+        limit = min(limit, 100)
+
+    kw = str(data.get("search", "") or "").strip()
+    where, params = ["p.view = '1'"], []
+    if kw != "" and kw != "0":  # Preserve PHP empty-string / zero behavior.
+        where.append("p.product_name ILIKE %s")
+        params.append("%" + kw + "%")
+
+    if is_flutter_post:
+        from math import isfinite
+        price_bounds = []
+        for key, operator in (("min_price", ">="), ("max_price", "<=")):
+            raw = data.get(key)
+            if raw is None or raw == "":
+                continue
+            try:
+                amount = float(raw)
+            except (TypeError, ValueError):
+                return jr({"status": "error", "message": f"{key} must be a finite non-negative number"}, 400)
+            if not isfinite(amount) or amount < 0:
+                return jr({"status": "error", "message": f"{key} must be a finite non-negative number"}, 400)
+            price_bounds.append((key, operator, amount))
+        bounds = {key: amount for key, _, amount in price_bounds}
+        if bounds.get("min_price") is not None and bounds.get("max_price") is not None and bounds["min_price"] > bounds["max_price"]:
+            return jr({"status": "error", "message": "min_price cannot exceed max_price"}, 400)
+        for key, operator, amount in price_bounds:
+            where.append(f"p.product_price {operator} %s")
+            params.append(amount)
+
+    sort_map = {"price_asc": "p.product_price ASC, p.product_id DESC",
+                "price_desc": "p.product_price DESC, p.product_id DESC",
+                "discount": "p.product_discount DESC, p.product_id DESC"}
+    sort_by = str(data.get("sort_by", "") or "") if is_flutter_post else ""
+    order_by = sort_map.get(sort_by, "p.product_id DESC")
+    where_sql = "WHERE " + " AND ".join(where)
+    total_row = fetchone(f"SELECT COUNT(*) AS total FROM zg_product p {where_sql}", params) or {"total": 0}
+    total = php_int(total_row.get("total", 0))
+    rows = fetchall(
+        "SELECT p.product_id AS id, p.product_name, p.product_price AS price, p.product_discount AS discount, "
+        "c.category_name, (SELECT image_path FROM zg_product_images WHERE product_id = p.product_id AND main = '1' "
+        f"LIMIT 1) AS image_url FROM zg_product p LEFT JOIN zg_category c ON c.category_id = p.category_id {where_sql} "
+        f"ORDER BY {order_by} LIMIT %s OFFSET %s", params + [limit, skip])
+    items = [{
+        "id": int(r["id"]), "productName": r["product_name"],
+        "imageUrl": legacy_image_url(r["image_url"], request, PLACEHOLDER),
+        "price": float(r["price"]), "discount": float(r["discount"] or 0),
+        "categoryName": r["category_name"] or "",
+    } for r in rows]
+    return jr({"search": items, "total": total, "skip": skip, "limit": limit})
+
+def _listing(request, extra_where, extra_params):
+    skip, limit = get_int(request, "skip", 0), get_int(request, "limit", 30)
+    username = request.legacy_user["username"]
+    wid = _user_warehouse_id(username)
+    total = php_int(fetchone("SELECT COUNT(*) AS total FROM zg_product WHERE highlight = TRUE AND view = '1'")["total"])
+    rows = fetchall(
+        "SELECT p.product_id AS id, p.product_name, p.product_price AS price, p.product_discount AS discount, "
+        "p.highlight, (SELECT image_path FROM zg_product_images WHERE product_id = p.product_id AND main = '1' "
+        f"LIMIT 1) AS image_url FROM zg_product p WHERE {extra_where} AND p.view = '1' AND p.warehouse_id = %s "
+        "ORDER BY p.product_id DESC LIMIT %s OFFSET %s", extra_params + [wid, limit, skip])
+    items = []
+    for r in rows:
+        items.append({
+            "id": int(r["id"]), "product_name": r["product_name"],
+            # (placeholder is also prefixed with base_url in PHP; preserved)
+            "image_url": (resolve_image_url(r["image_url"], request) if r["image_url"] else None) or (base_url() + PLACEHOLDER),
+            "price": float(r["price"]), "fav": _fav_flag(username, int(r["id"])),
+            "discount": float(r["discount"] or 0),
+        })
+    return jr({"highlights": items, "total": total, "skip": skip, "limit": limit})
+
+
+@legacy_view()
+def highlights(request):
+    return _listing(request, "p.highlight = TRUE", [])
+
+
+@legacy_view()
+def recommended(request):
+    top = fetchone("SELECT category_id, COUNT(*) AS total FROM category_view GROUP BY category_id "
+                   "ORDER BY total DESC LIMIT 1")
+    most = php_int(top["category_id"]) if top else 0
+    return _listing(request, "p.category_id = %s", [most])
+
+
+@legacy_view()
+def product_api(request):
+    username = request.legacy_user["username"]
+    data = as_dict(json_body(request))
+    pid = php_int(data.get("product_id")) if data.get("product_id") is not None else 0
+    if pid <= 0:
+        return jr({"status": "error", "message": "product_id is required"}, 400)
+
+    prow = fetchone("SELECT category_id FROM zg_product WHERE product_id = %s LIMIT 1", [pid])
+    # existing side effect: every product view is logged, even when the product does not exist
+    execute('INSERT INTO category_view ("user", category_id) VALUES (%s, %s)',
+            [username, php_int(prow["category_id"]) if prow else 0])
+
+    p = fetchone(
+        "SELECT product_id, mrp, product_name, disable_variants, subtitle, brand, youtube_link, share_image, "
+        "product_details, additional_details, product_description, product_keywords, product_price, product_discount, discount_value, discount_percent, "
+        "no_discount_banner, moq, set_of, quantity_selected, set_contains, gst_applicable, gst_percentage "
+        "FROM zg_product WHERE product_id = %s AND view = '1' LIMIT 1", [pid])
+    if not p:
+        return jr({"status": "error", "message": "Product not found"}, 404)
+
+    fav = _fav_flag(username, pid)
+    images = [legacy_image_url(r["image_path"], request) for r in fetchall(
+        "SELECT image_path FROM zg_product_images WHERE product_id = %s ORDER BY main DESC, image_id ASC", [pid]) if r["image_path"]]
+    banners = [legacy_image_url(r["image_path"], request) for r in fetchall(
+        "SELECT image_path FROM zg_discount_banners WHERE product_id = %s ORDER BY id ASC", [pid]) if r["image_path"]]
+
+    set_contains = []
+    if p["set_contains"]:
+        try:
+            dec = json.loads(p["set_contains"])
+            if isinstance(dec, (list, dict)):
+                set_contains = dec
+        except ValueError:
+            pass
+
+    price = php_int(p["product_price"])
+    mrp = php_int(p["mrp"])
+    margin = php_round(((mrp - price) / mrp) * 100, 2) if mrp > 0 else 0
+
+    variants = []
+    for r in fetchall("SELECT variant_id, variant_name, mrp, variant_price, disc, quantity, gst, gst_price "
+                      "FROM zg_variant WHERE product_id = %s", [pid]):
+        vp, vd = php_int(r["variant_price"]), php_int(r["disc"])
+        vmrp = vp + vd
+        variants.append({
+            "id": str(r["variant_id"]), "name": r["variant_name"] or "",
+            "mrp_per_piece": php_int(r["mrp"]), "price_per_piece": vp,
+            "margin_percentage": php_round(((vmrp - vp) / vmrp) * 100, 2) if vmrp > 0 else 0,
+            "quantity_selected": php_int(r["quantity"]),
+            "GST": r["gst"] if r["gst"] else "N", "GST_price": float(r["gst_price"] or 0),
+        })
+    if not variants:
+        variants.append({"id": "0", "name": "", "mrp_per_piece": mrp, "price_per_piece": price,
+                         "margin_percentage": margin, "quantity_selected": php_int(p["quantity_selected"]),
+                         "GST": "N", "GST_price": 0})
+
+    def s(v):  # PHP ?? "" on possibly-NULL columns; decimals come back from mysqli as strings
+        return "" if v is None else (str(v) if not isinstance(v, str) and not isinstance(v, int) else v)
+
+    return jr({"status": "success", "product": {
+        "id": int(p["product_id"]), "fav": fav,
+        "name": p["product_name"] or "", "subtitle": p["subtitle"] or "", "brand": p["brand"] or "",
+        "youtube": "https://youtube.com",
+        "no_discount_banner": s(p["no_discount_banner"]), "disable_variants": s(p["disable_variants"]),
+        "GST_applicable": s(p["gst_applicable"]), "GST_per": s(p["gst_percentage"]),
+        "share": "https://projects.teleber.com/" + str(int(p["product_id"])),
+        "product_details": p["product_details"] or p["product_description"] or "", "additional_details": p["additional_details"] or p["product_keywords"] or "",
+        "images": images, "discound_banners": banners, "set_contains": set_contains,
+        "discount_application": {"discount_value": str(php_int(p["discount_value"])),
+                                 "discount": str(php_int(p["discount_percent"]))},
+        "pricing": {"price_per_piece": price, "mrp_per_piece": mrp, "margin_percentage": margin},
+        "purchase_details": {"moq": max(1, php_int(p["moq"])), "set_of": php_int(p["set_of"]),
+                             "quantity_selected": php_int(p["quantity_selected"])},
+        "variants": variants,
+    }})

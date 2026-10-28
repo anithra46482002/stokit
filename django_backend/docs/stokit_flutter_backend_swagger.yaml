@@ -1,0 +1,822 @@
+openapi: 3.0.3
+info:
+  title: StokIt Flutter to Django API
+  version: 1.0.0
+  description: |
+    Source-derived contract inventory for the existing Flutter client and Django legacy API.
+    Only request fields explicitly observed in source are specified. Unknown request/response shapes
+    are intentionally left open and marked PARTIAL; this document does not assert E2E compatibility.
+    Task 1A (2026-10-19): authentication routes, the public/protected split and the 401/500 bodies were re-checked
+    against current source and database-free unit tests only. No database-backed or live HTTP evidence exists.
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local Django development server
+  - url: https://book-fiscally-reunion.ngrok-free.dev
+    description: Current ngrok tunnel; availability depends on the local tunnel process
+security: []
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque 64-hex session token
+      description: 'Token returned by POST /api/login; send it as Authorization: Bearer <token>. Only its SHA-256 is stored server-side.'
+  responses:
+    SessionExpired:
+      description: Missing, malformed, unknown, revoked or expired bearer token (legacy body; unit tested for every protected route).
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/SessionExpired'}
+    ServerError:
+      description: Database failure; sanitised body (unit tested). Never contains driver text, SQL, hosts, credentials or a traceback.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ServerError'}
+  schemas:
+    LegacyObject:
+      type: object
+      additionalProperties: true
+      description: Placeholder for response fields not yet verified against handler and Flutter model.
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      description: Error payload varies by endpoint; inspect actual response.
+    SessionExpired:
+      type: object
+      required: [status, message]
+      description: Exact legacy body for HTTP 401 on any protected route (missing/malformed/unknown/revoked/expired token).
+      properties:
+        status: {type: string, enum: [session_expired]}
+        message: {type: string, enum: [Session expired]}
+    ServerError:
+      type: object
+      required: [status, message]
+      description: Sanitised body for a database failure inside a /api/ handler. Never contains driver text, SQL, hosts, credentials or a traceback.
+      properties:
+        status: {type: string, enum: [error]}
+        message: {type: string, enum: [Internal server error]}
+    SearchRequest:
+      type: object
+      description: 'Flutter POST filter shape. Unknown keys are ignored. For POST the limit is capped at 100 and a limit of 0 or less becomes 30; a negative skip becomes 0.'
+      properties:
+        search: {type: string, description: 'Keyword matched case-insensitively against product_name; an empty string or "0" means no keyword'}
+        min_price: {type: number, minimum: 0, nullable: true, description: 'Numeric strings are also accepted; must be finite and non-negative'}
+        max_price: {type: number, minimum: 0, nullable: true, description: 'Numeric strings are also accepted; must be finite, non-negative and not below min_price'}
+        sort_by: {type: string, enum: [price_asc, price_desc, discount], nullable: true, description: 'Any other value falls back to newest first'}
+        skip: {type: integer, minimum: 0, default: 0}
+        limit: {type: integer, maximum: 100, default: 30}
+    ProductIdRequest:
+      type: object
+      required: [product_id]
+      properties:
+        product_id: {oneOf: [{type: integer}, {type: string}]}
+    OrderIdRequest:
+      type: object
+      required: [order_id]
+      properties:
+        order_id: {oneOf: [{type: integer}, {type: string}]}
+    CartActionRequest:
+      type: object
+      required: [variant_id, action]
+      properties:
+        product_id: {oneOf: [{type: integer}, {type: string}], description: 'Optional disambiguation hint. The handler chooses the product from database cart rows; when several products share variant_id 0, this must identify one of them or the request is rejected without mutation.'}
+        variant_id: {oneOf: [{type: integer}, {type: string}], description: 'Required integer >= 0. Real variants use their variant ID; products with no variant rows use 0.'}
+        action: {type: string, enum: [increase, decrease, remove]}
+    AdvancePayRequest:
+      type: object
+      description: 'All members are optional in source: status defaults to ACTIVE (ALL disables the status filter), limit is clamped to 1-100 (default 100), offset defaults to 0.'
+      properties:
+        status: {type: string, default: ACTIVE}
+        limit: {type: integer, default: 100}
+        offset: {type: integer, default: 0}
+        search: {type: string, description: 'Case-insensitive match on offer_name'}
+    GeocodeRequest:
+      type: object
+      required: [latitude, longitude]
+      description: 'Each value must be a plain string or a finite number (not boolean, array, object, NaN or Infinity); its text form must be at most 125 characters and contain no NUL. PHP-empty values (missing, null, empty string, 0, "0") are rejected as required. No range or numeric-format rule is enforced (unresolved policy).'
+      properties:
+        latitude: {oneOf: [{type: string, maxLength: 125}, {type: number}]}
+        longitude: {oneOf: [{type: string, maxLength: 125}, {type: number}]}
+    SaveCheckRequest:
+      type: object
+      description: 'Source accepts any JSON value except null, false, 0, "0", empty string, empty array and empty object (those return HTTP 200 with success false and message Invalid JSON). The members below are only the documented Flutter shape; they are not enforced.'
+      additionalProperties: true
+      properties:
+        success: {}
+        checkout_data:
+          type: object
+          properties:
+            profile: {type: object, additionalProperties: true}
+            cart_items: {type: array, items: {type: object, additionalProperties: true}}
+            cart_summary: {type: object, additionalProperties: true}
+          additionalProperties: true
+    SearchResponse:
+      type: object
+      required: [search, total, skip, limit]
+      properties:
+        search: {type: array, items: {type: object, additionalProperties: true}}
+        total: {type: integer}
+        skip: {type: integer}
+        limit: {type: integer}
+paths:
+  /api/login:
+    post:
+      operationId: flutterLogin
+      summary: Login
+      description: |
+        Source- and unit-test-verified (Task 1A; NOT yet verified against a database). Public route; the handler
+        accepts any HTTP method and a JSON body or form fields. By legacy contract EVERY ordinary failure is HTTP 200
+        with success=false (missing/empty fields, unknown user, wrong password, NUL byte in a field, 4th concurrent
+        session). users.status is intentionally not checked (preserved PHP behaviour). Successful credentials must
+        never be included in examples.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: {type: string, example: demo_user}
+                password: {type: string, format: password, example: NOT_A_REAL_PASSWORD}
+      responses:
+        '200':
+          description: Login success, or any ordinary failure (success=false).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [success, message, token, user]
+                    properties:
+                      success: {type: boolean, enum: [true]}
+                      message: {type: string, enum: [Login successful]}
+                      token: {type: string, description: 64 hex characters; only its SHA-256 is stored server-side}
+                      user:
+                        type: object
+                        required: [id, username, email, fullname]
+                        properties:
+                          id: {type: integer}
+                          username: {type: string}
+                          email: {type: string, nullable: true}
+                          fullname: {type: string, nullable: true}
+                  - type: object
+                    required: [success, message]
+                    properties:
+                      success: {type: boolean, enum: [false]}
+                      message:
+                        type: string
+                        description: One of "Username and password are required", "Invalid username or password", or "Maximum N active sessions allowed. Log out from another session and try again."
+        '500': {description: 'Database failure; sanitised body', content: {application/json: {schema: {$ref: '#/components/schemas/ServerError'}}}}
+  /api/logout:
+    post:
+      operationId: flutterLogout
+      summary: Server logout route
+      description: |
+        Unit-test-verified. Revokes only the bearer session presented (reason "logout"). A repeated call with the same
+        token is HTTP 401 because authentication runs first. Flutter source was not inspected in Task 1A; the earlier
+        audit recorded that the app clears its local token only and never calls this route.
+      security: [{BearerAuth: []}]
+      responses:
+        '200':
+          description: Session revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success: {type: boolean, enum: [true]}
+                  message: {type: string, enum: [Logout successful]}
+        '401': {description: 'Missing, malformed, unknown, revoked or expired token', content: {application/json: {schema: {$ref: '#/components/schemas/SessionExpired'}}}}
+        '500': {description: 'Database failure; sanitised body', content: {application/json: {schema: {$ref: '#/components/schemas/ServerError'}}}}
+  /api/profile:
+    post:
+      operationId: getProfile
+      summary: Fetch profile
+      description: |
+        Unit-test-verified key set (Task 1A; not database-verified). The handler accepts any HTTP method and ignores the
+        request body: the row is always selected by the AUTHENTICATED username. password/token columns are never returned.
+        If the account row vanished after authentication the body is JSON null (legacy PHP behaviour).
+      security: [{BearerAuth: []}]
+      responses:
+        '200':
+          description: Profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                nullable: true
+                required: [success, profile]
+                properties:
+                  success: {type: boolean, enum: [true]}
+                  profile:
+                    type: object
+                    required: [profile_picture_url, shop_name, owner, location, account_created_on, username, mobile, email, account_status, VIP, VIP_per, store_maped]
+                    properties:
+                      profile_picture_url: {type: string}
+                      shop_name: {type: string, nullable: true}
+                      owner: {type: string, nullable: true}
+                      location: {type: string, description: '"<address>, <city>"'}
+                      account_created_on: {type: string, description: YYYY-MM-DD}
+                      username: {type: string}
+                      mobile: {type: string, nullable: true}
+                      email: {type: string, nullable: true}
+                      account_status: {type: string, description: lower-cased users.status}
+                      VIP: {description: Raw users.vip_discount value; type not source-verified}
+                      VIP_per: {type: number}
+                      store_maped: {type: string, description: 'Raw users.store_maped (char(1); "Y" or "N")'}
+        '401': {description: 'Missing, malformed, unknown, revoked or expired token', content: {application/json: {schema: {$ref: '#/components/schemas/SessionExpired'}}}}
+        '500': {description: 'Database failure; sanitised body', content: {application/json: {schema: {$ref: '#/components/schemas/ServerError'}}}}
+  /api/geocode:
+    post:
+      operationId: submitGeocode
+      summary: Submit latitude and longitude
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/GeocodeRequest'}
+      description: |
+        Unit-test-verified (Task 1A; persistence not database-verified). POST only (other methods: 405, after
+        authentication). Writes latitude/longitude/store_maped='Y' for the AUTHENTICATED user only. Latitude and
+        longitude must be a string or finite number (no bool/array/object/NaN, max 125 characters, no NUL); PHP-"empty"
+        values (missing, "", 0, "0", null) are rejected as "required". No range or numeric-format rule is enforced
+        (unresolved policy). An unchanged location is reported as HTTP 200 with status "error" (legacy affected_rows).
+      responses:
+        '200':
+          description: Location updated, or already up to date (legacy 200 error shape).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: {type: string, enum: [success, error]}
+                  message: {type: string, enum: ['Location updated successfully.', 'User not found or location already up to date.']}
+        '400':
+          description: Missing/empty coordinates, or a coordinate that is not a plain string/finite number within 125 characters.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: {type: string, enum: [error]}
+                  message: {type: string, enum: ['Latitude and longitude are required.', 'Invalid latitude or longitude.']}
+        '401': {description: 'Missing, malformed, unknown, revoked or expired token', content: {application/json: {schema: {$ref: '#/components/schemas/SessionExpired'}}}}
+        '405': {description: 'Method other than POST', content: {application/json: {schema: {type: object, properties: {status: {type: string}, message: {type: string}}}}}}
+        '500': {description: 'Database failure; sanitised body', content: {application/json: {schema: {$ref: '#/components/schemas/ServerError'}}}}
+  /api/banner:
+    get:
+      operationId: getBanners
+      summary: List banners
+      responses:
+        '500': {$ref: '#/components/responses/ServerError'}
+        '200': {description: 'Local unauthenticated smoke check returned JSON; field schema and image URLs not verified', content: {application/json: {schema: {$ref: '#/components/schemas/LegacyObject'}}}}
+        default: {description: 'Actual response not fully characterized'}
+  /api/category:
+    get:
+      operationId: getCategories
+      summary: List categories
+      description: 'Source-reviewed: requires a bearer token (HTTP 401 without one, unit tested). Any HTTP method is accepted.'
+      security: [{BearerAuth: []}]
+      responses:
+        '500': {$ref: '#/components/responses/ServerError'}
+        '200': {description: 'Category response not verified', content: {application/json: {schema: {$ref: '#/components/schemas/LegacyObject'}}}}
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        default: {description: 'Other response not verified'}
+  /api/sub_categories:
+    get:
+      operationId: getSubcategories
+      summary: List subcategories
+      description: 'Source-reviewed. The handler reads the query string unless the method is POST. The key is named sub_category_id but the value is used as a category id (legacy naming). A missing or non-positive value is HTTP 400.'
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: query, name: sub_category_id, required: true, schema: {type: string}, description: 'Positive integer used as a category id (legacy key name)'}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'sub_category_id missing or not a positive integer', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified', content: {application/json: {schema: {$ref: '#/components/schemas/LegacyObject'}}}}
+        default: {description: 'Runtime response not verified'}
+    post:
+      operationId: postSubcategories
+      summary: List subcategories (POST form/body variant)
+      description: 'Source-reviewed. On POST only a JSON body is read; a form-encoded body is ignored and the request fails with HTTP 400. The key is sub_category_id; the value is used as a category id.'
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [sub_category_id], properties: {sub_category_id: {oneOf: [{type: integer}, {type: string}]}}, additionalProperties: true}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'sub_category_id missing or not a positive integer', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/getCategory:
+    post:
+      operationId: getCategoryById
+      summary: Get category/subcategory details
+      description: Flutter sends category_id, used by the handler as a subcategory ID (legacy naming mismatch).
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [category_id], properties: {category_id: {oneOf: [{type: integer}, {type: string}]}}}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'category_id (a subcategory id) missing or not positive', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '404': {description: 'Subcategory not found', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/search:
+    post:
+      operationId: searchProductsPost
+      summary: Search products with filters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SearchRequest'}
+      security: [{BearerAuth: []}]
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '200': {description: 'Response keys search, total, skip, limit are covered by database-free runtime contract tests, item schema not verified', content: {application/json: {schema: {$ref: '#/components/schemas/SearchResponse'}}}}
+        '400': {description: 'Invalid/inverted price bounds; regression tested'}
+        '405': {description: 'Unsupported method; regression tested'}
+    get:
+      operationId: searchProductsGet
+      summary: Legacy query-based product search
+      parameters:
+        - {in: query, name: search, schema: {type: string}}
+        - {in: query, name: skip, schema: {type: integer, minimum: 0}}
+        - {in: query, name: limit, schema: {type: integer, minimum: 1}}
+      security: [{BearerAuth: []}]
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'Invalid pagination', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Legacy GET contract retained; live data response not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/highlights:
+    get:
+      operationId: getHighlights
+      summary: List highlighted products
+      security: [{BearerAuth: []}]
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '200': {description: 'Response schema not verified', content: {application/json: {schema: {$ref: '#/components/schemas/LegacyObject'}}}}
+        default: {description: 'Runtime response not verified'}
+  /api/recommended:
+    get:
+      operationId: getRecommended
+      summary: List recommended products
+      security: [{BearerAuth: []}]
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '200': {description: 'Depends on legacy category_view/warehouse behavior; response not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/product-api:
+    post:
+      operationId: getProductDetails
+      summary: Get product details
+      description: Handler has a category_view side effect; do not use against shared/live data.
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProductIdRequest'}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'product_id missing or not positive', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '404': {description: 'Product not found (a category_view row is still inserted before this check)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/fav:
+    post:
+      operationId: toggleFavorite
+      summary: Toggle favorite
+      description: Mutating endpoint; test only with isolated test DB and authorized test identity.
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProductIdRequest'}
+      responses:
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'product_id missing or not a positive integer', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '405': {description: 'Method other than POST', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        default: {description: 'Runtime response not verified'}
+  /api/favpage:
+    get:
+      operationId: getFavorites
+      summary: List favorite products
+      security: [{BearerAuth: []}]
+      responses:
+        '500': {$ref: '#/components/responses/ServerError'}
+        '200': {description: 'Response schema not verified'}
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        default: {description: 'Runtime response not verified'}
+  /api/cart_action:
+    post:
+      operationId: updateCartAction
+      summary: Add or remove cart item
+      description: 'POST only; authenticated username scopes the cart. variant_id selects candidate cart lines and product_id is an optional disambiguation hint. For variant_id=0, multiple variantless products may share the value, so product_id must match a cart line; ambiguous requests return status=false and do not mutate. Actions are increase, decrease, remove. increase adds one up to MAX_CART_QTY; decrease subtracts one or deletes the line at quantity 1; remove deletes only the targeted line. A missing line returns affected_rows=0 for increase/remove, while decrease returns status=false. Validation errors generally use HTTP 200 with status=false. Real PostgreSQL synthetic-user rollback workflow passed 17 checks; sequence advancement from rolled-back inserts is expected.'
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CartActionRequest'}
+      responses:
+        '500': {$ref: '#/components/responses/ServerError'}
+        '405': {description: 'Method other than POST', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        default: {description: 'Runtime response not verified'}
+  /api/product-api-cart:
+    post:
+      operationId: getCartProductDetails
+      summary: Get cart product details
+      description: Source-observed body contains product_id and variants list of variant_id/qty; side effects not yet verified.
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_id, variants]
+              properties:
+                product_id: {oneOf: [{type: integer}, {type: string}]}
+                variants:
+                  type: array
+                  items:
+                    type: object
+                    required: [variant_id, qty]
+                    properties:
+                      variant_id: {oneOf: [{type: integer}, {type: string}]}
+                      qty: {type: integer, minimum: 0}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'Invalid JSON body (variants not a list, or product_id missing or not positive)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '405': {description: 'Method other than POST', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/cart_api_test:
+    get:
+      operationId: getCart
+      summary: Read current cart and server-calculated totals
+      security: [{BearerAuth: []}]
+      responses:
+        '500': {$ref: '#/components/responses/ServerError'}
+        '405': {description: 'Method other than GET', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Legacy response includes cart_items, final_summary, discount and mov per source tests; exact item schema not verified'}
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        default: {description: 'Runtime response not verified'}
+  /api/checkout:
+    get:
+      operationId: getCheckout
+      summary: Get checkout data
+      security: [{BearerAuth: []}]
+      responses:
+        '500': {$ref: '#/components/responses/ServerError'}
+        '404': {description: 'User not found', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        default: {description: 'Runtime response not verified'}
+  /api/saveCheck:
+    post:
+      operationId: saveCheckout
+      summary: Save checkout payload
+      description: 'Mutating endpoint (source-reviewed). POST only; stores any non-empty JSON body in a managed table for the authenticated user. Invalid JSON is HTTP 200 with success false. The success body keys are success, message, file and the misspelled oder_id (legacy name, preserved). Use an isolated test database only.'
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SaveCheckRequest'}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '405': {description: 'Method other than POST (body key detail)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '500': {description: 'Database failure, or a unique legacy order id could not be allocated', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Runtime regression checks exact key oder_id; complete response schema not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/notify:
+    post:
+      operationId: registerDeviceNotificationToken
+      summary: Register device notification token
+      description: 'Source-reviewed (no unit test). Reads the Device-Token request header; no body is read. Upserts one device-token row for the authenticated user (a database write). Do not send real device tokens to a shared database.'
+      parameters:
+        - {in: header, name: Device-Token, required: true, schema: {type: string}}
+      security: [{BearerAuth: []}]
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'Device-Token header missing or empty', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '405': {description: 'Method other than POST', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/noti_list:
+    get:
+      operationId: listNotifications
+      summary: List notifications
+      security: [{BearerAuth: []}]
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '404': {description: 'User not found', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        default: {description: 'Runtime response not verified'}
+    put:
+      operationId: markNotificationsRead
+      summary: Mark notification read (server supports action=mark_read; Flutter call site not found)
+      parameters:
+        - {in: query, name: action, required: true, schema: {type: string, enum: [mark_read]}}
+      description: 'Source-reviewed. Needs ?action=mark_read and a JSON body with notification_id (marks that notification) or mark_all=true (marks every notification visible to the user, including broadcast rows). Any other method or action returns 405.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {notification_id: {type: integer}, mark_all: {type: boolean}}, additionalProperties: true}
+      security: [{BearerAuth: []}]
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'Neither notification_id nor mark_all provided', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '404': {description: 'User or notification not found', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '405': {description: 'Method or action not supported', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/notification_action:
+    post:
+      operationId: notificationAction
+      summary: Notification action by message ID
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [message_id], properties: {message_id: {oneOf: [{type: integer}, {type: string}]}}}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'message_id missing or not an integer', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '404': {description: 'Notification not found', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '405': {description: 'Method other than POST', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/order_post:
+    post:
+      operationId: placeOrderFromCart
+      summary: Place order from current cart
+      description: Creates order/items and clears cart according to source audit. Do not test outside isolated test DB.
+      security: [{BearerAuth: []}]
+      responses:
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'Cart is empty', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '404': {description: 'User not found', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '405': {description: 'Method other than POST', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response not verified'}
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        default: {description: 'Runtime response not verified'}
+  /api/orders:
+    get:
+      operationId: listOrders
+      summary: List current user's orders
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: query, name: skip, schema: {type: integer, minimum: 0}}
+        - {in: query, name: limit, schema: {type: integer, minimum: 1}}
+      responses:
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'Invalid pagination', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '404': {description: 'User not found', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '405': {description: 'Method other than GET or POST', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        default: {description: 'Runtime response not verified'}
+    post:
+      operationId: createOrderAlternate
+      summary: Alternate orders POST handler
+      description: Route supports POST but Flutter call shape not established; do not send until reviewed.
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: true}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'Invalid pagination', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '404': {description: 'User not found', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '405': {description: 'Method other than GET or POST', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/order_details:
+    post:
+      operationId: getOrderDetails
+      summary: Get order details
+      description: 'Source-reviewed. Any HTTP method; order_id is read from the JSON body, else the query string, and must be a positive integer. The order is selected by order_id AND the authenticated customer email, so an order of another customer is HTTP 404.'
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OrderIdRequest'}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'order_id missing or not a positive integer', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '404': {description: 'User or order not found for this customer', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/order_cancel:
+    post:
+      operationId: cancelOrder
+      summary: Cancel order
+      description: 'Mutating endpoint (source-reviewed, not database-tested). POST only. order_id must be a positive integer. Ownership is granted when the order phone OR email equals the caller phone or email (policy risk: phone matching). Cancelling an already cancelled order returns HTTP 200; a shipped, delivered, out-for-delivery or completed order returns 409.'
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OrderIdRequest'}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'Invalid or missing order_id', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '403': {description: 'Order does not belong to the caller (phone or email match)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '404': {description: 'User or order not found', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '405': {description: 'Method other than POST', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '409': {description: 'Order already shipped, delivered, out for delivery or completed', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response not verified'}
+        default: {description: 'Runtime response not verified'}
+  '/api/acc/':
+    post:
+      operationId: requestPasswordReset
+      summary: Request password reset
+      description: |
+        Unit-test-verified (Task 1A; DB-backed flow BLOCKED). Public, POST only. Always answers with the same generic
+        HTTP 200 body whether or not the account exists (no enumeration), including empty/null/non-scalar identity,
+        unknown account and the 3-codes-per-hour cap. For an eligible account a 6-digit OTP (10 minute TTL) is stored
+        only as an HMAC digest and e-mailed; the OTP is never returned. Delivery requires EMAIL_BACKEND to be configured;
+        the default backend is "dummy" (nothing is delivered, nothing is logged). Do not submit real contact details.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: {type: string, description: Preferred identity; falls back to username when empty/null}
+                username: {type: string}
+      responses:
+        '200':
+          description: Generic acknowledgement.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success: {type: boolean, enum: [true]}
+                  message: {type: string, enum: ['If the account is eligible, reset instructions will be sent.']}
+        '405': {description: 'Method other than POST'}
+        '500': {description: 'Database failure; sanitised body', content: {application/json: {schema: {$ref: '#/components/schemas/ServerError'}}}}
+  /api/acc/reset:
+    post:
+      operationId: confirmPasswordReset
+      summary: Confirm password reset
+      description: |
+        Unit-test-verified (Task 1A; DB-backed flow BLOCKED). Public, POST only. otp is 6 digits (string or integer);
+        the new password must be a STRING of at least 10 characters (lists/numbers/null are rejected). An unknown
+        account, missing/expired/consumed code and exhausted attempts all return the same 400 body (no enumeration).
+        5 wrong codes burn the code; a correct code is consumed before the password changes and the password is stored
+        as Argon2id. Existing login sessions are NOT revoked by a reset (unresolved policy, see report). Do not submit
+        real OTPs or passwords.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [otp]
+              properties:
+                email: {type: string, description: Identity; falls back to username when empty/null}
+                username: {type: string}
+                otp: {type: string, pattern: '^[0-9]{6}$'}
+                new_password: {type: string, minLength: 10, format: password, description: '"password" is accepted as an alias'}
+      responses:
+        '200':
+          description: Password changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success: {type: boolean, enum: [true]}
+                  message: {type: string, enum: [Password reset successful]}
+        '400':
+          description: Malformed request, or invalid/expired code.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success: {type: boolean, enum: [false]}
+                  message: {type: string, enum: [Invalid reset request, Invalid or expired reset code]}
+        '405': {description: 'Method other than POST'}
+        '500': {description: 'Database failure; sanitised body', content: {application/json: {schema: {$ref: '#/components/schemas/ServerError'}}}}
+  /api/targets:
+    get:
+      operationId: getTargets
+      summary: List targets
+      description: 'Source-reviewed. Accepts GET, POST and OPTIONS (other methods: HTTP 405 with key detail). Returns an empty list with success false when the user is not ACTIVE.'
+      security: [{BearerAuth: []}]
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '405': {description: 'Method other than GET, POST or OPTIONS', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/coabout:
+    get:
+      operationId: getCompanyAbout
+      summary: Get company/about information
+      description: Source audit found placeholder example.com links; confirm canonical URLs with owner.
+      security: [{BearerAuth: []}]
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '200': {description: 'Placeholder response confirmed by source review, exact schema not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/advancePay-api:
+    post:
+      operationId: getAdvancePayment
+      summary: Advance payment request/status
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdvancePayRequest'}
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '400': {description: 'Invalid pagination (limit or offset not integers)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '405': {description: 'Method other than POST', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/crd_rel:
+    get:
+      operationId: getCreditRelease
+      summary: Get credit release information
+      security: [{BearerAuth: []}]
+      responses:
+        '401': {$ref: '#/components/responses/SessionExpired'}
+        '500': {$ref: '#/components/responses/ServerError'}
+        '404': {description: 'User not found', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '200': {description: 'Response schema not verified'}
+        default: {description: 'Runtime response not verified'}
+  /api/contactus:
+    get:
+      operationId: getContactUs
+      summary: Public contact details
+      description: 'Source-reviewed. Public route (no token). GET only; other methods return HTTP 405. Returns static contact details from source and performs no database access.'
+      responses:
+        '200':
+          description: Contact details.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [contact]
+                properties:
+                  contact:
+                    type: object
+                    properties:
+                      whatsapp: {type: string}
+                      phone: {type: string}
+                      email: {type: string}
+        '405': {description: 'Method other than GET', content: {application/json: {schema: {type: object, properties: {error: {type: string}}}}}}
+x-stokit-contract-status: PARTIAL
+x-stokit-safety: No mutating endpoint has been executed against the shared development database. Read-only source review and existing unit tests only.

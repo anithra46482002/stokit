@@ -1,0 +1,95 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { apiErrorText, deleteBlockedReason, deleteRecord, describeDeleteError, describeVariant, pageAfterDelete } from './variantActions.js';
+import { saveVariantAndParent } from './productSettings.js';
+
+const httpError = (status, data) => Object.assign(new Error('Request failed with status code ' + status), { response: { status, data } });
+const LABEL = 'Red pen (variant ID 8, product ID 3)';
+
+// ---- fake axios-like client that records every request
+function fakeApi({ failOn = {} } = {}) {
+  const calls = [];
+  const respond = (key, payload) => { calls.push(payload); if (failOn[key]) return Promise.reject(failOn[key]); return Promise.resolve({ status: 200, data: {} }); };
+  return {
+    calls,
+    request: (cfg) => respond('request', { method: cfg.method, url: cfg.url, data: cfg.data }),
+    delete: (url, cfg) => respond('delete', { method: 'DELETE', url, params: cfg?.params, data: cfg?.data }),
+    patch: (url, data) => respond('patch', { method: 'PATCH', url, data }),
+    get: (url, cfg) => { calls.push({ method: 'GET', url, params: cfg?.params }); return Promise.resolve({ data: { results: [{ id: Number(cfg.params.id), no_discount_banner: 'N', disable_variants: 'N' }] } }); },
+  };
+}
+
+// ---------------------------------------------------------------- helpers
+test('error text prefers the server detail and is never a raw JSON blob', () => {
+  assert.equal(apiErrorText(httpError(409, { detail: 'Variant is referenced by order history and cannot be deleted' })), 'Variant is referenced by order history and cannot be deleted');
+  assert.equal(apiErrorText(httpError(400, { name: 'Name cannot be empty' })), 'name: Name cannot be empty');
+  assert.ok(!apiErrorText(httpError(409, { detail: 'x' })).includes('{'));
+});
+
+test('delete errors: referenced, missing, forbidden, server and network failures are all explained honestly', () => {
+  assert.match(describeDeleteError(httpError(409, { detail: 'Variant is referenced by order history and cannot be deleted' }), LABEL), /cannot be deleted: it is referenced by order history.*Nothing was changed\./);
+  assert.match(describeDeleteError(httpError(404, { detail: 'Variant not found' }), LABEL), /no longer exists.*refreshed/);
+  assert.match(describeDeleteError(httpError(403, { detail: 'An active administrator role assignment is required for this operation.' }), LABEL), /permission/);
+  assert.match(describeDeleteError(httpError(500, { detail: 'Variant could not be deleted. Nothing was removed.' }), LABEL), /server error. Nothing was removed/);
+  assert.match(describeDeleteError(new Error('Network Error'), LABEL), /Network Error.*Nothing was removed/);
+  for (const e of [httpError(409, { detail: 'x' }), httpError(404, {}), new Error('Network Error')]) assert.ok(!/successfully|deleted successfully/i.test(describeDeleteError(e, LABEL)));
+});
+
+test('the confirmation label identifies the variant and its product', () => {
+  assert.equal(describeVariant({ id: 8, name: 'Red pen', product_id: 3 }), LABEL);
+});
+
+test('deleting the last row of a later page steps back one page', () => {
+  assert.equal(pageAfterDelete(3, 1), 2);
+  assert.equal(pageAfterDelete(3, 20), 3);
+  assert.equal(pageAfterDelete(1, 1), 1);
+  assert.equal(pageAfterDelete(2, 0), 1);
+});
+
+// ---------------------------------------------------------------- delete flow (integration with the request layer)
+test('delete sends one authenticated-client DELETE to product-variants with the selected variant id only', async () => {
+  const api = fakeApi();
+  await deleteRecord(api, 'product-variants', undefined, 8);
+  assert.deepEqual(api.calls, [{ method: 'DELETE', url: 'product-variants', params: { id: 8 }, data: { id: 8 } }]);
+});
+
+test('a refused delete rejects, so the caller can keep the row and show the error', async () => {
+  const api = fakeApi({ failOn: { delete: httpError(409, { detail: 'Variant is present in customer carts and cannot be deleted' }) } });
+  await assert.rejects(deleteRecord(api, 'product-variants', undefined, 3), (err) => err.response.status === 409);
+  assert.equal(api.calls.length, 1); // no retry, no second request
+});
+
+// ---------------------------------------------------------------- edit flow
+const editValues = { id: 8, product_id: 3, name: 'Red pen', variant_price: 100, mrp: 110, quantity: 99, discount: '15', gst: 'N', gst_price: 0, minimum_buying_count: 1 };
+const sameParent = { no_discount_banner: 'N', disable_variants: 'N' };
+
+test('edit sends PATCH product-variants with the variant id and no parent-product fields', async () => {
+  const api = fakeApi();
+  await saveVariantAndParent({ api, values: { ...editValues, ...sameParent }, parentSettings: sameParent, original: sameParent });
+  const patch = api.calls.find((c) => c.method === 'PATCH' && c.url === 'product-variants');
+  assert.ok(patch, 'PATCH product-variants was sent');
+  assert.equal(patch.data.id, 8);
+  assert.equal(patch.data.product_id, 3);
+  assert.ok(!('disable_variants' in patch.data) && !('no_discount_banner' in patch.data));
+  assert.ok(!api.calls.some((c) => c.url === 'products' && c.method === 'PATCH'), 'unchanged parent settings are not re-saved');
+});
+
+test('a rejected edit does not report success and does not touch the parent product', async () => {
+  const api = fakeApi({ failOn: { request: httpError(400, { quantity: 'Must be non-negative' }) } });
+  await assert.rejects(saveVariantAndParent({ api, values: { ...editValues, quantity: -1, ...sameParent }, parentSettings: sameParent, original: sameParent }), (err) => err.response.status === 400 && !err.partial);
+  assert.equal(api.calls.length, 1);
+});
+
+test('a parent-settings failure after a stored variant is flagged partial so the UI refreshes the table', async () => {
+  const api = fakeApi({ failOn: { patch: httpError(500, { detail: 'boom' }) } });
+  const changed = { no_discount_banner: 'Y', disable_variants: 'N' };
+  await assert.rejects(saveVariantAndParent({ api, values: { ...editValues, ...changed }, parentSettings: changed, original: sameParent }), (err) => err.partial === true && /variant was saved/.test(err.message));
+  assert.ok(api.calls.some((c) => c.url === 'product-variants' && c.method === 'PATCH'));
+});
+
+test('Delete is blocked up front, with a reason, only for variants the list reports as in use', () => {
+  assert.equal(deleteBlockedReason({ id: 1, in_use: '' }), '');
+  assert.equal(deleteBlockedReason({ id: 1 }), '');
+  assert.equal(deleteBlockedReason(null), '');
+  assert.match(deleteBlockedReason({ id: 2, in_use: 'order history, customer carts' }), /used by: order history, customer carts/);
+});

@@ -1,0 +1,68 @@
+﻿/* Advance Pay Offers — dedicated page styling only */
+.apo {
+  --apo-ink: #1F2937;
+  --apo-muted: #64748B;
+  --apo-green: #DC2626;
+  --apo-green-dark: #B91C1C;
+  --apo-border: #E2E8F0;
+  padding: clamp(18px, 2.4vw, 34px) !important;
+  min-height: calc(100vh - 90px);
+  background: linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 16px 44px rgba(18, 64, 43, .06) !important;
+  color: var(--apo-ink);
+}
+.apo-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between !important;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin-bottom: 26px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--apo-border);
+}
+.apo-head small { display: inline-block; margin-bottom: 9px; color: var(--apo-muted); font-size: 12px; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
+.apo-head h1 { margin: 0 !important; color: #1F2937; font-size: clamp(25px, 2.5vw, 34px) !important; letter-spacing: -.045em; }
+.apo-head > div:last-child { display: flex; align-items: center; flex-wrap: wrap; gap: 13px; }
+.apo-count { display: inline-flex; align-items: center; min-height: 42px; padding: 0 14px; border: 1px solid #dce9e0; border-radius: 12px; background: #fff; color: #475569; font-size: 13px; font-weight: 750; }
+.apo .apo-green { min-height: 44px; padding: 0 19px; border: 1px solid var(--apo-green) !important; border-radius: 12px; background: linear-gradient(135deg, #DC2626, #B91C1C) !important; color: #fff !important; box-shadow: 0 7px 16px rgba(220, 38, 38, .17); transition: transform .15s ease, box-shadow .15s ease; }
+.apo .apo-green:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(220, 38, 38, .23); }
+.apo-table-wrap { overflow-x: auto; border: 1px solid var(--apo-border); border-radius: 15px; background: #fff; box-shadow: 0 5px 20px rgba(25, 63, 43, .035); }
+.apo-table { width: 100%; min-width: 930px; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.apo-table th { padding: 16px 17px; border-bottom: 1px solid #E2E8F0; background: #FEF2F2; color: #64748B; font-size: 11px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; white-space: nowrap; }
+.apo-table td { padding: 17px; border-bottom: 1px solid #edf2ee; color: #1F2937; vertical-align: middle; white-space: nowrap; }
+.apo-table tbody tr { transition: background .15s ease; }
+.apo-table tbody tr:hover { background: #f7fbf8; }
+.apo-table tbody tr:last-child td { border-bottom: 0; }
+.apo-table td small { display: block; margin-top: 5px; color: #64748B; font-size: 11px; }
+.apo-table td img { display: block; width: 54px; height: 54px; object-fit: contain; padding: 4px; border: 1px solid #E2E8F0; border-radius: 12px; background: #fff; }
+.apo-table td:nth-child(4) { color: #DC2626; font-weight: 750; }
+.apo-table td:nth-child(5) { color: #DC2626; font-weight: 700; }
+.apo-table td:nth-child(8) { font-size: 11px; font-weight: 800; }
+.apo-table td:nth-child(8):has(+ td) { letter-spacing: .04em; }
+.apo-table td button { min-height: 37px; padding: 8px 13px; border: 1px solid #E2E8F0; border-radius: 10px; background: #fff; color: #334155; transition: background .15s ease, border-color .15s ease; }
+.apo-table td button:hover { border-color: #FCA5A5; background: #FEF2F2; }
+.apo .error { margin: 0 0 18px; border: 1px solid #ffd0ca; border-radius: 12px; }
+.apo-new-page { width: min(100%, 1100px); margin: 28px auto !important; }
+.apo-back { margin-bottom: 18px; border: 1px solid #E2E8F0 !important; background: #fff; }
+.apo-new-form { width: 100%; max-width: 100%; box-sizing: border-box; }
+.apo-close { float: right; border: 1px solid #E2E8F0; background: #F8FAFC; }
+.apo-modal > .apo-new-form { padding: 0; box-shadow: none; max-height: none; overflow: visible; }
+.apo .apo-modal { border: 1px solid #E2E8F0; border-radius: 20px; background: #fff; box-shadow: 0 26px 80px rgba(11, 37, 25, .24); }
+.apo .apo-new-form h2 { color: #1F2937; letter-spacing: -.025em; }
+.apo .apo-grid input, .apo .apo-grid select { min-height: 44px; border-color: #E2E8F0; border-radius: 10px; }
+.apo .apo-grid input:focus, .apo .apo-grid select:focus { border-color: #DC2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, .12); }
+.apo-calculator { border: 1px solid #FECACA; border-radius: 15px; background: linear-gradient(135deg, #FEF2F2, #fff); }
+.apo-calculator h3 { color: #991B1B; }
+.apo-calc-grid > div { border: 1px solid #e0ece4; border-radius: 12px; background: rgba(255,255,255,.9); }
+.apo-calc-grid strong { color: #DC2626; }
+.apo .apo-new-form footer button[type="submit"] { background: #DC2626; color: #fff; }
+.apo .apo-new-form footer button[type="submit"]:hover { background: #B91C1C; }
+@media (max-width: 720px) {
+  .apo { padding: 16px !important; border-radius: 14px !important; }
+  .apo-head { align-items: stretch; }
+  .apo-head > div:last-child { justify-content: space-between; }
+  .apo-table th, .apo-table td { padding: 12px; }
+}

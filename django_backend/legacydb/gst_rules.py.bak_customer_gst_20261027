@@ -1,0 +1,94 @@
+"""Single source of truth for GST: product/variant calculation from the saved admin configuration.
+
+Pricing convention (documented, used by cart, checkout, order creation, order details, statements and the
+catalog detail responses):
+
+* Prices stored in zg_product / zg_variant are GST-EXCLUSIVE list prices. GST is added once, on top of the
+  list price (before product/cart discounts), and is never extracted from a price. Because the stored price is
+  never treated as tax-inclusive there is no way to tax it twice.
+* Product flag (zg_product.gst_applicable) is mandatory: anything other than 'Y' -> GST is exactly zero, and
+  stale gst_percentage / gst_price values are ignored.
+* Variant lines additionally require the variant flag (zg_variant.gst) to be 'Y'. A product-level 'N' always wins
+  over a variant 'Y'.
+* When enabled: a saved product percentage in (0, 100] is authoritative (tax = price x pct x qty); otherwise the
+  saved per-unit amount is used (variant gst_price for a variant line, product gst_price for variant 0).
+  A percentage and an amount are never added together.
+* Missing, negative, non-finite or out-of-range configuration never creates a default rate: GST is zero.
+* Each line is rounded once, half-up, to cents.
+"""
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+CENT = Decimal("0.01")
+ZERO = Decimal("0.00")
+HUNDRED = Decimal("100")
+
+
+def _decimal(value):
+    """Decimal of `value`, or None when it is missing/unparseable/non-finite."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        amount = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return amount if amount.is_finite() else None
+
+
+def _flag(value):
+    return str(value or "N").strip().upper() == "Y"
+
+
+def effective_gst_settings(*, product_gst_applicable, gst_percentage=None, configured_amount=None, variant_gst="N", is_variant=False):
+    """The GST configuration that actually applies to one line.
+
+    Returns {"applicable": "Y"|"N", "percentage": Decimal, "amount": Decimal}. "applicable" is "N" and both
+    numbers are zero whenever GST is disabled or the saved configuration is unusable.
+    """
+    disabled = {"applicable": "N", "percentage": ZERO, "amount": ZERO}
+    if not _flag(product_gst_applicable):
+        return disabled
+    if is_variant and not _flag(variant_gst):
+        return disabled
+    pct = _decimal(gst_percentage)
+    amount = _decimal(configured_amount)
+    if (pct is not None and (pct < 0 or pct > HUNDRED)) or (amount is not None and amount < 0):
+        return disabled  # invalid saved configuration: fail safe, never substitute a rate
+    if pct is not None and pct > 0:
+        return {"applicable": "Y", "percentage": pct, "amount": ZERO}
+    if amount is not None and amount > 0:
+        return {"applicable": "Y", "percentage": ZERO, "amount": amount}
+    return {"applicable": "Y", "percentage": ZERO, "amount": ZERO}
+
+
+def calculate_gst_amount(*, unit_price, quantity, product_gst_applicable, variant_gst="N", is_variant=False, gst_percentage=None, configured_amount=None):
+    """One line's GST from saved product/variant configuration (see the module docstring for the rules)."""
+    settings = effective_gst_settings(
+        product_gst_applicable=product_gst_applicable, gst_percentage=gst_percentage,
+        configured_amount=configured_amount, variant_gst=variant_gst, is_variant=is_variant)
+    if settings["applicable"] != "Y":
+        return ZERO
+    price = _decimal(unit_price)
+    price = max(Decimal("0"), price) if price is not None else Decimal("0")
+    qty_value = _decimal(quantity)
+    qty = max(0, int(qty_value)) if qty_value is not None else 0
+    if qty == 0:
+        return ZERO
+    if settings["percentage"] > 0:
+        tax = price * settings["percentage"] / HUNDRED * qty
+    else:
+        tax = settings["amount"] * qty
+    return tax.quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+def validate_gst_configuration(*, percentage=None, amount=None):
+    """Admin-side validation of saved values. Returns an error message, or None when acceptable."""
+    pct, amt = _decimal(percentage), _decimal(amount)
+    if percentage not in (None, "") and pct is None:
+        return "GST percentage must be a finite number."
+    if amount not in (None, "") and amt is None:
+        return "GST amount must be a finite number."
+    if pct is not None and (pct < 0 or pct > HUNDRED):
+        return "GST percentage must be between 0 and 100."
+    if amt is not None and amt < 0:
+        return "GST amount cannot be negative."
+    return None

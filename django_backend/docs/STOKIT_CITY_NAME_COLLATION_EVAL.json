@@ -1,0 +1,720 @@
+{
+  "mariadb": {
+    "VERSION": "13.0.2-MariaDB",
+    "TABLE_COLLATION": "utf8mb4_uca1400_ai_ci"
+  },
+  "mariadb_forced_error_lines": 17,
+  "postgres": {
+    "server": "PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+    "target_db_locale": [
+      [
+        "stokit_postgres_dev",
+        "c",
+        "English_India.1252"
+      ]
+    ],
+    "icu_und_collations_preinstalled": [
+      [
+        "und-x-icu",
+        true
+      ]
+    ],
+    "extensions_available": [
+      "citext",
+      "unaccent"
+    ]
+  },
+  "summary": {
+    "default_deterministic": {
+      "cases": 23,
+      "mismatches": 17,
+      "mismatched_cases": [
+        "case Kochi/kochi",
+        "accent cafe-acute/cafe",
+        "NFC vs NFD cafe-acute",
+        "trailing space",
+        "two trailing spaces",
+        "trailing NBSP",
+        "sharp s Strasse",
+        "ae ligature",
+        "dotted I Istanbul",
+        "fullwidth K",
+        "ligature fi",
+        "zero-width joiner",
+        "Kelvin sign",
+        "o-stroke",
+        "l-stroke",
+        "Malayalam precomposed vs decomposed vowel",
+        "empty vs space"
+      ],
+      "equality_plan_uses_index": true,
+      "ilike_supported": true
+    },
+    "und-x-icu_deterministic": {
+      "cases": 23,
+      "mismatches": 17,
+      "mismatched_cases": [
+        "case Kochi/kochi",
+        "accent cafe-acute/cafe",
+        "NFC vs NFD cafe-acute",
+        "trailing space",
+        "two trailing spaces",
+        "trailing NBSP",
+        "sharp s Strasse",
+        "ae ligature",
+        "dotted I Istanbul",
+        "fullwidth K",
+        "ligature fi",
+        "zero-width joiner",
+        "Kelvin sign",
+        "o-stroke",
+        "l-stroke",
+        "Malayalam precomposed vs decomposed vowel",
+        "empty vs space"
+      ],
+      "equality_plan_uses_index": true,
+      "ilike_supported": true
+    },
+    "nondeterministic_ks-level1 (ci+ai)": {
+      "cases": 23,
+      "mismatches": 4,
+      "mismatched_cases": [
+        "trailing space",
+        "two trailing spaces",
+        "trailing NBSP",
+        "empty vs space"
+      ],
+      "equality_plan_uses_index": true,
+      "ilike_supported": "ERR:FeatureNotSupported"
+    },
+    "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+      "cases": 23,
+      "mismatches": 10,
+      "mismatched_cases": [
+        "accent cafe-acute/cafe",
+        "trailing space",
+        "two trailing spaces",
+        "trailing NBSP",
+        "sharp s Strasse",
+        "ae ligature",
+        "dotted I Istanbul",
+        "o-stroke",
+        "l-stroke",
+        "empty vs space"
+      ],
+      "equality_plan_uses_index": true,
+      "ilike_supported": "ERR:FeatureNotSupported"
+    },
+    "ks-level1 + rtrim expression unique index": {
+      "cases": 23,
+      "mismatches": 1,
+      "mismatched_cases": [
+        "trailing NBSP"
+      ],
+      "equality_plan_uses_index": false,
+      "ilike_supported": "ERR:FeatureNotSupported"
+    }
+  },
+  "detail": [
+    {
+      "case": "case Kochi/kochi",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "accent cafe-acute/cafe",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "NFC vs NFD cafe-acute",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "trailing space",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "two trailing spaces",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "leading space",
+      "mariadb_equal": false,
+      "mariadb_unique_collision": false,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": false,
+        "unique_collision": false
+      }
+    },
+    {
+      "case": "trailing tab",
+      "mariadb_equal": false,
+      "mariadb_unique_collision": false,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": false,
+        "unique_collision": false
+      }
+    },
+    {
+      "case": "trailing NBSP",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": false,
+        "unique_collision": false
+      }
+    },
+    {
+      "case": "inner space",
+      "mariadb_equal": false,
+      "mariadb_unique_collision": false,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": false,
+        "unique_collision": false
+      }
+    },
+    {
+      "case": "sharp s Strasse",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "ae ligature",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "dotted I Istanbul",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "dotless i",
+      "mariadb_equal": false,
+      "mariadb_unique_collision": false,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": false,
+        "unique_collision": false
+      }
+    },
+    {
+      "case": "fullwidth K",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "ligature fi",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "zero-width joiner",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "Kelvin sign",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "o-stroke",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "l-stroke",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "Malayalam precomposed vs decomposed vowel",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": true,
+        "unique_collision": true
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "hyphen Kochi-City/KochiCity",
+      "mariadb_equal": false,
+      "mariadb_unique_collision": false,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": false,
+        "unique_collision": false
+      }
+    },
+    {
+      "case": "empty vs space",
+      "mariadb_equal": true,
+      "mariadb_unique_collision": true,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": true,
+        "unique_collision": true
+      }
+    },
+    {
+      "case": "control Kochi/Kochin",
+      "mariadb_equal": false,
+      "mariadb_unique_collision": false,
+      "default_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "und-x-icu_deterministic": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level1 (ci+ai)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "nondeterministic_ks-level2 (ci, accent-sensitive)": {
+        "equal": false,
+        "unique_collision": false
+      },
+      "ks-level1 + rtrim expression unique index": {
+        "equal": false,
+        "unique_collision": false
+      }
+    }
+  ],
+  "mariadb_like_contains": {
+    "case Kochi/kochi": 1,
+    "accent cafe-acute/cafe": 1,
+    "NFC vs NFD cafe-acute": 1,
+    "trailing space": 1,
+    "two trailing spaces": 1,
+    "leading space": 2,
+    "trailing tab": 2,
+    "trailing NBSP": 1,
+    "inner space": 1,
+    "sharp s Strasse": 1,
+    "ae ligature": 1,
+    "dotted I Istanbul": 1,
+    "dotless i": 1,
+    "fullwidth K": 1,
+    "ligature fi": 1,
+    "zero-width joiner": 1,
+    "Kelvin sign": 1,
+    "o-stroke": 1,
+    "l-stroke": 1,
+    "Malayalam precomposed vs decomposed vowel": 1,
+    "hyphen Kochi-City/KochiCity": 1,
+    "empty vs space": 1,
+    "control Kochi/Kochin": 2
+  }
+}
